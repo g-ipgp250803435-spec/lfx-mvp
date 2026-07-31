@@ -1,7 +1,7 @@
 "use client";
 
 import Script from "next/script";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { isDemoMode } from "@/lib/api";
 import { useApp } from "@/components/Providers";
@@ -33,7 +33,14 @@ export function useSignedInUser() {
   const [user, setUser] = useState<SignedInUser | null>(null);
   useEffect(() => {
     const raw = sessionStorage.getItem("lfx-user");
-    if (raw) { try { setUser(JSON.parse(raw) as SignedInUser); } catch { sessionStorage.removeItem("lfx-user"); } }
+    if (raw) {
+      try {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setUser(JSON.parse(raw) as SignedInUser);
+      } catch {
+        sessionStorage.removeItem("lfx-user");
+      }
+    }
   }, []);
   const save = (next: SignedInUser | null) => {
     setUser(next);
@@ -50,9 +57,9 @@ export function GoogleAuth({ onUser, compact = false }: { onUser?: (user: Signed
   const { user, setUser } = useSignedInUser();
   const { labels } = useApp();
 
-  const update = (next: SignedInUser | null) => { setUser(next); onUser?.(next); };
+  const update = useCallback((next: SignedInUser | null) => { setUser(next); onUser?.(next); }, [setUser, onUser]);
 
-  useEffect(() => { onUser?.(user); }, [user]);
+  useEffect(() => { onUser?.(user); }, [user, onUser]);
 
   useEffect(() => {
     if (!scriptReady || !clientId || !buttonRef.current || !window.google || user) return;
@@ -65,7 +72,7 @@ export function GoogleAuth({ onUser, compact = false }: { onUser?: (user: Signed
     });
     buttonRef.current.innerHTML = "";
     window.google.accounts.id.renderButton(buttonRef.current, { theme: "outline", size: compact ? "medium" : "large", shape: "pill", width: compact ? 220 : 310, text: "continue_with" });
-  }, [scriptReady, clientId, compact, user]);
+  }, [scriptReady, clientId, compact, user, update]);
 
   if (user) return <div className="signed-user"><span className="signed-user__avatar">{user.picture ? <img src={user.picture} alt=""/> : <Icon name="user"/>}</span><span><small>{labels.signedInAs}</small><strong>{user.name}</strong><em>{user.email}</em></span><button className="text-button" onClick={() => { window.google?.accounts.id.disableAutoSelect(); update(null); }}>{labels.signOut}</button></div>;
 

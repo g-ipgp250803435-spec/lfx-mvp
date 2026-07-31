@@ -42,6 +42,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
   }, [content]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
     const handler = () => { if (isDemoMode) setContent(demoStore.getContent()); };
     window.addEventListener("lfx-demo-update", handler);

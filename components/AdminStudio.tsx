@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { CmsImage } from "@/components/CmsImage";
 import { GoogleAuth, type SignedInUser } from "@/components/GoogleAuth";
@@ -66,7 +67,11 @@ export function AdminStudio() {
   }, [user, publicContent]);
 
   useEffect(() => {
-    if (!user) { setSession(null); return; }
+    if (!user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSession(null);
+      return;
+    }
     const verify = async () => {
       setChecking(true); setFlash(null);
       try {
@@ -78,7 +83,12 @@ export function AdminStudio() {
     void verify();
   }, [user]);
 
-  useEffect(() => { if (session?.role === "ADMIN") void loadData(); }, [session, loadData]);
+  useEffect(() => {
+    if (session?.role === "ADMIN") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void loadData();
+    }
+  }, [session, loadData]);
 
   const run = async (operation: () => Promise<void>, success: string) => {
     setBusy(true); setFlash(null);
@@ -169,7 +179,7 @@ export function AdminStudio() {
   ];
 
   return <div className="admin-shell">
-    <aside className="admin-sidebar"><div className="admin-brand"><Image src="/lfx-mark.svg" alt="LFX" width={52} height={52}/><span><strong>LFX Studio</strong><small>{session.email}</small></span></div><nav>{tabs.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => { setTab(item.id); setFlash(null); }}><Icon name={item.icon}/>{language === "bm" ? item.bm : item.en}</button>)}</nav><a href="/" className="admin-back"><Icon name="arrow" size={17}/>{language === "bm" ? "Lihat portal" : "View portal"}</a></aside>
+    <aside className="admin-sidebar"><div className="admin-brand"><Image src="/lfx-mark.svg" alt="LFX" width={52} height={52}/><span><strong>LFX Studio</strong><small>{session.email}</small></span></div><nav>{tabs.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => { setTab(item.id); setFlash(null); }}><Icon name={item.icon}/>{language === "bm" ? item.bm : item.en}</button>)}</nav><Link href="/" className="admin-back"><Icon name="arrow" size={17}/>{language === "bm" ? "Lihat portal" : "View portal"}</Link></aside>
     <main className="admin-main"><header className="admin-topbar"><div><span className="eyebrow">Office Operating System</span><h1>{tabs.find((item) => item.id === tab)?.[language]}</h1></div><span className="mode-pill">{isDemoMode ? "DEMO" : "LIVE"}</span></header><FlashMessage flash={flash}/>
       {tab === "overview" && <Overview assets={assets} loans={loans} ikes={ikes} tabung={tabung}/>} 
       {tab === "content" && <ContentEditor content={content} setContent={setContent} onSave={saveContent} onUpload={uploadMedia} busy={busy}/>} 

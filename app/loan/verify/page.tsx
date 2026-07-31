@@ -16,6 +16,7 @@ function LoanPass() {
   const [loan, setLoan] = useState<Loan | null>(null);
   const [url, setUrl] = useState("");
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUrl(window.location.href);
     const load = async () => {
       if (!loanId) return;
