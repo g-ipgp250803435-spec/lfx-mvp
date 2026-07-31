@@ -1,0 +1,158 @@
+{
+  "site": {
+    "name": "LEGASI FINANCE X",
+    "shortName": "LFX",
+    "tagline": {
+      "bm": "Satu platform. Semua urusan Pejabat Bendahari.",
+      "en": "One platform. All Treasury Office affairs."
+    },
+    "description": {
+      "bm": "Pusat operasi harian Pejabat Yang Berhormat Bendahari Agung, Majlis Perwakilan Pelajar IPG.",
+      "en": "The daily operations centre for the Office of the Honourable Treasurer-General, IPG Student Representative Council."
+    },
+    "logoUrl": "/lfx-mark.svg",
+    "faviconUrl": "/favicon.svg",
+    "primaryColor": "#071f1b",
+    "accentColor": "#d9b75f",
+    "officialEmail": "treasury@ipg.edu.my"
+  },
+  "hero": {
+    "eyebrow": {
+      "bm": "Pejabat Yang Berhormat Bendahari Agung",
+      "en": "Office of the Honourable Treasurer-General"
+    },
+    "title": {
+      "bm": "Urusan kewangan kampus, dipermudah.",
+      "en": "Campus treasury operations, simplified."
+    },
+    "description": {
+      "bm": "Pinjaman aset, bantuan kebajikan tanpa faedah, ketelusan Tabung Jumaat dan pengumuman rasmi dalam satu pusat operasi digital.",
+      "en": "Asset loans, interest-free welfare assistance, Tabung Jumaat transparency and official announcements in one digital operations centre."
+    },
+    "primaryButton": {
+      "label": { "bm": "Mohon Pinjaman Aset", "en": "Request an Asset" },
+      "href": "/iaset/apply"
+    },
+    "secondaryButton": {
+      "label": { "bm": "Mohon iKES", "en": "Apply for iKES" },
+      "href": "/ikes/apply"
+    }
+  },
+  "notice": {
+    "enabled": true,
+    "label": { "bm": "Makluman", "en": "Notice" },
+    "text": {
+      "bm": "Permohonan iAset dan iKES kini boleh dibuat sepenuhnya secara dalam talian.",
+      "en": "iAset and iKES applications are now fully available online."
+    },
+    "href": "/announcements"
+  },
+  "navigation": [
+    { "id": "nav-home", "label": { "bm": "Utama", "en": "Home" }, "href": "/", "enabled": true },
+    { "id": "nav-iaset", "label": { "bm": "iAset", "en": "iAset" }, "href": "/iaset", "enabled": true },
+    { "id": "nav-ikes", "label": { "bm": "iKES", "en": "iKES" }, "href": "/ikes", "enabled": true },
+    { "id": "nav-tabung", "label": { "bm": "Tabung Jumaat", "en": "Friday Fund" }, "href": "/tabung-jumaat", "enabled": true },
+    { "id": "nav-ann", "label": { "bm": "Pengumuman", "en": "Announcements" }, "href": "/announcements", "enabled": true },
+    { "id": "nav-org", "label": { "bm": "Organisasi", "en": "Organisation" }, "href": "/organisation", "enabled": true }
+  ],
+  "features": [
+    {
+      "id": "feature-iaset",
+      "icon": "briefcase",
+      "title": { "bm": "iAset", "en": "iAset" },
+      "description": { "bm": "Semak ketersediaan dan mohon aset secara paperless.", "en": "Check availability and request assets through a paperless workflow." },
+      "href": "/iaset"
+    },
+    {
+      "id": "feature-ikes",
+      "icon": "heart",
+      "title": { "bm": "iKES", "en": "iKES" },
+      "description": { "bm": "Pinjaman kebajikan tanpa faedah yang telus dan pantas.", "en": "Transparent and efficient interest-free welfare loans." },
+      "href": "/ikes"
+    },
+    {
+      "id": "feature-tabung",
+      "icon": "chart",
+      "title": { "bm": "Tabung Jumaat", "en": "Friday Fund" },
+      "description": { "bm": "Lihat kutipan, agihan dan baki dana secara terbuka.", "en": "View collections, distributions and balances openly." },
+      "href": "/tabung-jumaat"
+    },
+    {
+      "id": "feature-news",
+      "icon": "megaphone",
+      "title": { "bm": "Pusat Pengumuman", "en": "Announcement Centre" },
+      "description": { "bm": "Semua makluman perbendaharaan dalam satu arkib rasmi.", "en": "All treasury notices in one official archive." },
+      "href": "/announcements"
+    }
+  ],
+  "donation": {
+    "heading": { "bm": "Sumbang kepada Tabung Jumaat", "en": "Contribute to the Friday Fund" },
+    "description": {
+      "bm": "Sumbangan anda membantu kebajikan pelajar dan inisiatif komuniti kampus.",
+      "en": "Your contribution supports student welfare and campus community initiatives."
+    },
+    "target": 500,
+    "paymentUrl": "https://example.com/replace-with-payment-link",
+    "bankName": "Bank Islam Malaysia Berhad",
+    "accountName": "Tabung Jumaat MPP IPG",
+    "accountNumber": "000000000000",
+    "qrImageUrl": "/duitnow-placeholder.svg",
+    "note": {
+      "bm": "Gantikan pautan pembayaran, maklumat akaun dan imej QR melalui panel admin sebelum menerima sumbangan sebenar.",
+      "en": "Replace the payment link, account details and QR image in the admin panel before accepting real contributions."
+    }
+  },
+  "footer": {
+    "about": {
+      "bm": "LEGASI FINANCE X ialah sistem operasi digital Pejabat Yang Berhormat Bendahari Agung.",
+      "en": "LEGASI FINANCE X is the digital operating system of the Office of the Honourable Treasurer-General."
+    },
+    "address": "Majlis Perwakilan Pelajar, Institut Pendidikan Guru",
+    "links": [
+      { "id": "foot-privacy", "label": { "bm": "Dasar Privasi", "en": "Privacy Policy" }, "href": "/privacy", "enabled": true },
+      { "id": "foot-admin", "label": { "bm": "Pentadbir", "en": "Admin" }, "href": "/admin", "enabled": true }
+    ],
+    "copyright": {
+      "bm": "Hak cipta terpelihara Pejabat Bendahari Agung MPP.",
+      "en": "All rights reserved by the SRC Treasury Office."
+    }
+  },
+  "organisation": [
+    {
+      "id": "officer-1",
+      "name": "Nama Bendahari Agung",
+      "position": { "bm": "Yang Berhormat Bendahari Agung", "en": "The Honourable Treasurer-General" },
+      "portfolio": { "bm": "Kewangan, Aset dan Kebajikan", "en": "Finance, Assets and Welfare" },
+      "email": "treasurer@ipg.edu.my",
+      "responsibilities": { "bm": "Menetapkan dasar kewangan MPP dan mengetuai operasi perbendaharaan.", "en": "Sets SRC financial policy and leads treasury operations." },
+      "photoUrl": "/officer-placeholder.svg",
+      "level": 1
+    },
+    {
+      "id": "officer-2",
+      "name": "Nama Naib Bendahari Agung",
+      "position": { "bm": "Naib Bendahari Agung", "en": "Deputy Treasurer-General" },
+      "portfolio": { "bm": "Operasi dan Pematuhan", "en": "Operations and Compliance" },
+      "email": "deputy.treasurer@ipg.edu.my",
+      "responsibilities": { "bm": "Menyelaras iAset, iKES dan rekod audit harian.", "en": "Coordinates iAset, iKES and daily audit records." },
+      "photoUrl": "/officer-placeholder.svg",
+      "level": 2
+    }
+  ],
+  "customPages": [
+    {
+      "id": "page-privacy",
+      "slug": "privacy",
+      "title": { "bm": "Dasar Privasi", "en": "Privacy Policy" },
+      "summary": { "bm": "Cara LFX mengendalikan data pengguna.", "en": "How LFX handles user data." },
+      "published": true,
+      "sections": [
+        {
+          "id": "privacy-1",
+          "heading": { "bm": "Prinsip data", "en": "Data principles" },
+          "body": { "bm": "LFX hanya mengumpul data yang diperlukan untuk mengurus permohonan, kelulusan dan rekod audit. Akses dihadkan mengikut peranan.", "en": "LFX only collects data needed to manage applications, approvals and audit records. Access is restricted by role." }
+        }
+      ]
+    }
+  ]
+}

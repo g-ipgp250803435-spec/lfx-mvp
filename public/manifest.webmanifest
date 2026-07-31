@@ -1,0 +1,10 @@
+{
+  "name": "LEGASI FINANCE X",
+  "short_name": "LFX",
+  "description": "One platform. All Treasury Office affairs.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#071f1b",
+  "theme_color": "#071f1b",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

@@ -1,0 +1,1 @@
+loan_id,asset_id,user_id,purpose,request_date,approved_by,status,qr_code_url,date_borrowed,date_returned_expected,date_returned_actual
