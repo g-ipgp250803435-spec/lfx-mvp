@@ -42,7 +42,9 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
   }, [content]);
 
   useEffect(() => {
-    void refresh();
+    setTimeout(() => {
+      void refresh();
+    }, 0);
     const handler = () => { if (isDemoMode) setContent(demoStore.getContent()); };
     window.addEventListener("lfx-demo-update", handler);
     return () => window.removeEventListener("lfx-demo-update", handler);

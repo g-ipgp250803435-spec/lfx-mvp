@@ -16,7 +16,9 @@ function LoanPass() {
   const [loan, setLoan] = useState<Loan | null>(null);
   const [url, setUrl] = useState("");
   useEffect(() => {
-    setUrl(window.location.href);
+    setTimeout(() => {
+      setUrl(window.location.href);
+    }, 0);
     const load = async () => {
       if (!loanId) return;
       try {

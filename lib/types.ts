@@ -25,6 +25,51 @@ export type CustomPageSection = {
   buttonHref?: string;
 };
 
+export type PageBlock =
+  | {
+      type: "richText";
+      id: string;
+      content: LocalizedText;
+    }
+  | {
+      type: "image";
+      id: string;
+      imageUrl: string;
+      alt: LocalizedText;
+      caption?: LocalizedText;
+      isDecorative?: boolean;
+    }
+  | {
+      type: "cta";
+      id: string;
+      title: LocalizedText;
+      description?: LocalizedText;
+      label: LocalizedText;
+      href: string;
+      variant?: "primary" | "secondary";
+    }
+  | {
+      type: "faq";
+      id: string;
+      items: Array<{
+        id: string;
+        question: LocalizedText;
+        answer: LocalizedText;
+      }>;
+    }
+  | {
+      type: "documents";
+      id: string;
+      title?: LocalizedText;
+      items: Array<{
+        id: string;
+        title: LocalizedText;
+        url: string;
+        fileType?: string;
+        fileSize?: string;
+      }>;
+    };
+
 export type CustomPage = {
   id: string;
   slug: string;
@@ -33,6 +78,7 @@ export type CustomPage = {
   heroImage?: string;
   published: boolean;
   sections: CustomPageSection[];
+  blocks?: PageBlock[];
 };
 
 export type Officer = {

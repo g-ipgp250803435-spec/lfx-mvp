@@ -20,8 +20,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
     const savedLanguage = localStorage.getItem("lfx-language") as Language | null;
     const savedTheme = localStorage.getItem("lfx-theme") as "light" | "dark" | null;
     const preferredDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    setLanguageState(savedLanguage === "en" ? "en" : "bm");
-    setTheme(savedTheme || (preferredDark ? "dark" : "light"));
+    const targetLang = savedLanguage === "en" ? "en" : "bm";
+    const targetTheme = savedTheme || (preferredDark ? "dark" : "light");
+    setTimeout(() => {
+      setLanguageState(targetLang);
+      setTheme(targetTheme);
+    }, 0);
   }, []);
 
   useEffect(() => {

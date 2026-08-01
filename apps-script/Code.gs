@@ -9,7 +9,7 @@
 const TABLES = {
   users: ["user_id", "full_name", "role", "is_active"],
   assets: ["asset_id", "name", "category", "image_url", "status", "description"],
-  loans: ["loan_id", "asset_id", "user_id", "purpose", "request_date", "approved_by", "status", "qr_code_url", "date_borrowed", "date_returned_expected", "date_returned_actual"],
+  loans: ["loan_id", "asset_id", "user_id", "purpose", "request_date", "approved_by", "status", "qr_code_url", "date_borrowed", "date_returned_expected", "date_returned_actual", "rejection_reason"],
   ikes: ["application_id", "user_id", "type", "amount_requested", "ticket_proof_url", "status", "request_date", "approved_by", "notes", "amount_approved", "repayment_term_days", "decision_date", "payment_date", "repayment_due_date", "amount_repaid", "outstanding_amount", "is_overdue", "rejection_reason", "intake", "class_name", "phone_number", "bank_account_number", "bank_name"],
   tabung: ["record_id", "type", "amount", "date", "description", "recorded_by", "recipient"],
   announcements: ["announcement_id", "title", "content", "category", "attachment_url", "publish_date", "created_by", "responsible_officer"],
@@ -54,6 +54,7 @@ function doPost(e) {
       case "loans/all": return json_({ ok: true, data: adminListLoans_(body) });
       case "ikes/all": return json_({ ok: true, data: adminListIkes_(body) });
       case "ikes/mine": return json_({ ok: true, data: userListIkes_(body) });
+      case "loans/mine": return json_({ ok: true, data: userListLoans_(body) });
       case "ikes/repayment": return json_({ ok: true, data: withLock_(() => ikesRepayment_(body)) });
       case "loan/request": return json_({ ok: true, data: withLock_(() => requestLoan_(body)) });
       case "loan/approve": return json_({ ok: true, data: withLock_(() => decideLoan_(body)) });
@@ -184,6 +185,19 @@ function userListIkes_(body) {
     .sort((a, b) => String(b.request_date).localeCompare(String(a.request_date)));
 }
 
+function userListLoans_(body) {
+  const user = requireUser_(body.idToken, false);
+  const assets = indexBy_(rows_("tbl_assets"), "asset_id");
+  const users = indexBy_(rows_("tbl_users"), "user_id");
+  return rows_("tbl_loans")
+    .filter((item) => String(item.user_id).toLowerCase() === user.email.toLowerCase())
+    .map((loan) => Object.assign({}, loan, {
+      asset_name: assets[loan.asset_id] ? assets[loan.asset_id].name : loan.asset_id,
+      user_name: users[loan.user_id] ? users[loan.user_id].full_name : loan.user_id
+    }))
+    .sort((a, b) => String(b.request_date).localeCompare(String(a.request_date)));
+}
+
 function listAssets_(includeAll) {
   const values = rows_("tbl_assets").map((asset) => Object.assign({}, asset, { status: asset.status || "AVAILABLE" }));
   return includeAll ? values : values;
@@ -220,15 +234,25 @@ function decideLoan_(body) {
   if (!loan) throw new Error("Loan not found.");
   if (loan.status !== "PENDING") throw new Error("Only pending requests can be decided.");
 
+  const reason = clean_(body.reason);
+  if (decision === "REJECTED") {
+    if (!reason) throw new Error("A reason is required when rejecting a loan request.");
+  }
+
   if (decision === "APPROVED") assertNoLoanConflict_(loan);
-  const patch = { status: decision, approved_by: admin.email, qr_code_url: decision === "APPROVED" ? signedLoanUrl_(loanId) : "" };
+  const patch = {
+    status: decision,
+    approved_by: admin.email,
+    qr_code_url: decision === "APPROVED" ? signedLoanUrl_(loanId) : "",
+    rejection_reason: decision === "REJECTED" ? reason : ""
+  };
   updateBy_("tbl_loans", "loan_id", loanId, patch);
-  audit_(admin.email, `LOAN_${decision}`, { loan_id: loanId, reason: clean_(body.reason) });
+  audit_(admin.email, `LOAN_${decision}`, { loan_id: loanId, reason: reason });
 
   const subject = decision === "APPROVED" ? "iAset request approved" : "iAset request rejected";
   const message = decision === "APPROVED"
     ? `Your iAset request ${loanId} has been approved. Digital pass: ${patch.qr_code_url}`
-    : `Your iAset request ${loanId} has been rejected.${body.reason ? ` Reason: ${body.reason}` : ""}`;
+    : `Your iAset request ${loanId} has been rejected.${reason ? ` Reason: ${reason}` : ""}`;
   sendMailSafe_(loan.user_id, subject, message);
   return Object.assign({}, loan, patch);
 }
@@ -533,9 +557,60 @@ function saveAssets_(body) {
 
 function uploadFile_(body) {
   const admin = requireAdmin_(body.idToken);
-  if (!body.file || !body.file.data) throw new Error("file.data is required.");
-  const url = saveDataUrl_(body.file, clean_(body.prefix) || "LFX_UPLOAD", true);
-  audit_(admin.email, "FILE_UPLOADED", { url: url, name: body.file.name });
+  const file = body.file;
+  if (!file || !file.data) throw new Error("file.data is required.");
+
+  const purpose = clean_(body.purpose);
+  const raw = String(file.data || "");
+  const match = raw.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) throw new Error("Uploaded file must be a base64 data URL.");
+
+  const mimeType = clean_(file.mimeType || match[1]).toLowerCase();
+  const base64Data = match[2];
+  const bytes = Utilities.base64Decode(base64Data);
+  const size = bytes.length;
+
+  if (size > 2.5 * 1024 * 1024) throw new Error("File is too large. Maximum 2.5 MB.");
+
+  // SVG security sanitization/check
+  if (mimeType === "image/svg+xml" || mimeType.indexOf("xml") !== -1) {
+    const svgText = Utilities.newBlob(bytes).getDataAsString();
+    const hasScript = svgText.match(/<script/i);
+    const hasEvent = svgText.match(/on[a-z]+\s*=/i);
+    const hasIframe = svgText.match(/<iframe/i);
+    const hasObject = svgText.match(/<object/i);
+    if (hasScript || hasEvent || hasIframe || hasObject) {
+      throw new Error("SVG upload rejected: File contains scripts or unsafe active content.");
+    }
+  }
+
+  // Validate allowed MIME types per purpose if purpose is provided
+  if (purpose) {
+    const allowed = {
+      logo: ["image/svg+xml", "image/png", "image/jpeg", "image/webp"],
+      favicon: ["image/x-icon", "image/vnd.microsoft.icon", "image/png", "image/svg+xml"],
+      asset_image: ["image/png", "image/jpeg", "image/webp"],
+      donation_qr: ["image/png", "image/jpeg", "image/webp"],
+      officer_photo: ["image/svg+xml", "image/png", "image/jpeg", "image/webp"],
+      announcement_pdf: ["application/pdf"]
+    };
+    const list = allowed[purpose];
+    if (list && list.indexOf(mimeType) === -1) {
+      throw new Error("File MIME type is not permitted for the specified purpose.");
+    }
+  }
+
+  const url = saveDataUrl_(file, clean_(body.prefix) || "LFX_UPLOAD", true);
+
+  // Store audit details including administrator email, purpose, MIME type, size and generated Drive file ID or URL
+  audit_(admin.email, "FILE_UPLOADED", {
+    url: url,
+    name: file.name,
+    purpose: purpose,
+    mimeType: mimeType,
+    size: size
+  });
+
   return { url: url };
 }
 
@@ -740,3 +815,111 @@ function parseLocalized_(value) { if (value && typeof value === "object") return
 function maskEmail_(email) { const parts = clean_(email).split("@"); return parts.length === 2 ? `${parts[0].slice(0,2)}***@${parts[1]}` : "Verified borrower"; }
 function normaliseCell_(value) { return value instanceof Date ? Utilities.formatDate(value, Session.getScriptTimeZone() || "Asia/Kuala_Lumpur", "yyyy-MM-dd") : value; }
 function valueForCell_(value) { return value === undefined || value === null ? "" : typeof value === "object" ? JSON.stringify(value) : value; }
+
+function setupOverdueLoanTrigger() {
+  removeOverdueLoanTriggers();
+  ScriptApp.newTrigger("checkOverdueLoansAndNotify")
+    .timeBased()
+    .everyDays(1)
+    .atHour(8)
+    .create();
+}
+
+function removeOverdueLoanTriggers() {
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach((trigger) => {
+    if (trigger.getHandlerFunction() === "checkOverdueLoansAndNotify") {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+}
+
+function hasSentOverdueNoticeToday_(loanId) {
+  const audits = rows_("tbl_audit");
+  const todayStr = today_();
+  return audits.some((audit) => {
+    if (audit.action !== "LOAN_OVERDUE_NOTICE_SENT") return false;
+    if (audit.timestamp.indexOf(todayStr) !== 0) return false;
+    try {
+      const details = JSON.parse(audit.details || "{}");
+      return String(details.loan_id) === String(loanId);
+    } catch (e) {
+      return false;
+    }
+  });
+}
+
+function checkOverdueLoansAndNotify() {
+  const loans = rows_("tbl_loans");
+  const assets = indexBy_(rows_("tbl_assets"), "asset_id");
+  const users = rows_("tbl_users");
+  const todayStr = today_();
+
+  const admins = users.filter((u) => String(u.role).toUpperCase() === "ADMIN" && String(u.is_active).toLowerCase() !== "false");
+  const adminEmails = admins.map((u) => u.user_id).filter(Boolean);
+
+  loans.forEach((loan) => {
+    if (String(loan.status).toUpperCase() !== "ACTIVE") return;
+    if (!loan.date_returned_expected) return;
+    if (loan.date_returned_actual) return;
+    if (todayStr <= String(loan.date_returned_expected)) return;
+
+    if (hasSentOverdueNoticeToday_(loan.loan_id)) return;
+
+    const todayMs = new Date(todayStr).getTime();
+    const expectedMs = new Date(loan.date_returned_expected).getTime();
+    const diffDays = Math.floor((todayMs - expectedMs) / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) return;
+
+    const asset = assets[loan.asset_id];
+    const assetName = asset ? asset.name : loan.asset_id;
+
+    const subject = `[LFX Peringatan] Pemulangan Aset Terlewat - ${loan.loan_id}`;
+    const returnInstructions = "Sila pulangkan aset tersebut dengan kadar segera ke Pejabat Bendahari MPP atau hubungi Pegawai Bertanggungjawab.";
+    const message = `Peringatan Overdue / Overdue Warning:
+
+Loan ID: ${loan.loan_id}
+Aset: ${assetName}
+Tarikh Pulang Dijangka: ${loan.date_returned_expected}
+Hari Terlewat: ${diffDays} hari
+
+Sila pulangkan aset dengan segera / Please return the asset immediately.
+Arahan Pemulangan: ${returnInstructions}
+
+Hubungi kami di emel rasmi Pejabat Bendahari untuk sebarang pertanyaan.`;
+
+    const recipients = [loan.user_id].concat(adminEmails).filter(Boolean);
+    const recipientListStr = recipients.join(", ");
+
+    try {
+      if (loan.user_id) {
+        MailApp.sendEmail(loan.user_id, subject, message);
+      }
+
+      adminEmails.forEach((adminEmail) => {
+        try {
+          MailApp.sendEmail(adminEmail, `[ADMIN NOTIFICATION] Overdue Asset Loan: ${loan.loan_id}`, message);
+        } catch (e) {
+          audit_("SYSTEM", "EMAIL_FAILED", { to: adminEmail, loan_id: loan.loan_id, error: String(e.message || e) });
+        }
+      });
+
+      audit_("SYSTEM", "LOAN_OVERDUE_NOTICE_SENT", {
+        loan_id: loan.loan_id,
+        borrower_email: loan.user_id,
+        expected_return_date: loan.date_returned_expected,
+        overdue_days: diffDays,
+        notification_date: todayStr,
+        recipient_list: recipientListStr
+      });
+
+    } catch (error) {
+      audit_("SYSTEM", "EMAIL_FAILED", {
+        to: loan.user_id,
+        subject: subject,
+        loan_id: loan.loan_id,
+        error: String(error.message || error)
+      });
+    }
+  });
+}

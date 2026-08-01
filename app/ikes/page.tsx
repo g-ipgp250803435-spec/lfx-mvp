@@ -44,7 +44,9 @@ export default function IkesPage() {
   }, []);
 
   useEffect(() => {
-    void fetchApplications(user);
+    setTimeout(() => {
+      void fetchApplications(user);
+    }, 0);
   }, [user, fetchApplications]);
 
   const mapIkesStatus = (status: string, lang: "bm" | "en") => {
