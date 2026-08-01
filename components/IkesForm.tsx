@@ -12,7 +12,7 @@ import { useApp } from "@/components/Providers";
 const defaultIntakes = [
   "PPISMP Ambilan Ogos 2026 Keluaran Julai 2027",
   "PISMP Ambilan Ogos 2026 Keluaran Julai 2030",
-  "PISMP Ambilan 2025 Keluaran Julai 2029",
+  "PISMP Ambilan Ogos 2025 Keluaran Julai 2029",
   "PISMP Ambilan Ogos 2024 Keluaran Julai 2028",
   "PISMP Ambilan Ogos 2023 Keluaran Julai 2027"
 ];
