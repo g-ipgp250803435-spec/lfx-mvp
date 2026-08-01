@@ -6,7 +6,6 @@ import { useApp } from "@/components/Providers";
 import { apiGet, isDemoMode } from "@/lib/api";
 import { demoStore } from "@/lib/demo-store";
 import type { OrgItem } from "@/lib/types";
-import { Icon } from "@/components/Icon";
 
 export default function OrganisationPage() {
   const { language } = useApp();

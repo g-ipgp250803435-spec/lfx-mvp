@@ -38,6 +38,7 @@ export function Header() {
             <button className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")}>EN</button>
           </div>
           <button className="icon-button" onClick={toggleTheme} aria-label={theme === "dark" ? labels.lightMode : labels.darkMode}><Icon name={theme === "dark" ? "sun" : "moon"}/></button>
+          <Link href="/permohonan" className="button button--small button--outline"><Icon name="briefcase" size={17}/>{language === "bm" ? "Permohonan Saya" : "My Applications"}</Link>
           <Link href="/admin" className="button button--small button--outline"><Icon name="user" size={17}/>{labels.admin}</Link>
           <button className="menu-button" onClick={() => setOpen(!open)} aria-label={open ? labels.closeMenu : labels.openMenu}><Icon name={open ? "close" : "menu"}/></button>
         </div>

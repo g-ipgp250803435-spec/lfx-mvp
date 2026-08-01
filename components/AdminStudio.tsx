@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { CmsImage } from "@/components/CmsImage";
 import { GoogleAuth, type SignedInUser } from "@/components/GoogleAuth";
+import { MediaUploader } from "@/components/MediaUploader";
+import { RejectionDialog } from "@/components/RejectionDialog";
+import { TabungChart, AssetUtilisationChart } from "@/components/LightweightCharts";
+import { normalizePageBlocks } from "@/lib/block-utils";
 import { Icon } from "@/components/Icon";
 import { QrScanner } from "@/components/QrScanner";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -13,7 +17,7 @@ import { useContent } from "@/components/ContentProvider";
 import { apiGet, apiPost, isDemoMode } from "@/lib/api";
 import { demoStore } from "@/lib/demo-store";
 import { formatDate, money, uid } from "@/lib/format";
-import type { Announcement, Asset, IkesApplication, Loan, LocalizedText, MenuItem, Officer, SiteContent, TabungRecord, OrgItem } from "@/lib/types";
+import type { Announcement, Asset, IkesApplication, Loan, LocalizedText, MenuItem, PageBlock, SiteContent, TabungRecord, OrgItem } from "@/lib/types";
 
 type Tab = "overview" | "content" | "assets" | "ikes" | "tabung" | "announcements" | "organisation";
 type Flash = { type: "success" | "error"; text: string } | null;
@@ -45,6 +49,9 @@ export function AdminStudio() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [flash, setFlash] = useState<Flash>(null);
   const [busy, setBusy] = useState(false);
+
+  const [rejectingLoanId, setRejectingLoanId] = useState<string | null>(null);
+  const [rejectingIkesId, setRejectingIkesId] = useState<string | null>(null);
 
   const [organisationItems, setOrganisationItems] = useState<OrgItem[]>([]);
 
@@ -84,7 +91,12 @@ export function AdminStudio() {
   }, [user, publicContent]);
 
   useEffect(() => {
-    if (!user) { setSession(null); return; }
+    if (!user) {
+      setTimeout(() => {
+        setSession(null);
+      }, 0);
+      return;
+    }
     const verify = async () => {
       setChecking(true); setFlash(null);
       try {
@@ -96,11 +108,19 @@ export function AdminStudio() {
     void verify();
   }, [user]);
 
-  useEffect(() => { if (session?.role === "ADMIN") void loadData(); }, [session, loadData]);
+  useEffect(() => {
+    if (session?.role === "ADMIN") {
+      setTimeout(() => {
+        void loadData();
+      }, 0);
+    }
+  }, [session, loadData]);
 
   useEffect(() => {
     if (session?.role === "ADMIN") {
-      void loadOrgItems();
+      setTimeout(() => {
+        void loadOrgItems();
+      }, 0);
     }
   }, [session, loadOrgItems]);
 
@@ -109,16 +129,6 @@ export function AdminStudio() {
     try { await operation(); setFlash({ type: "success", text: success }); }
     catch (error) { setFlash({ type: "error", text: error instanceof Error ? error.message : "Operation failed" }); }
     finally { setBusy(false); }
-  };
-
-  const uploadMedia = async (file: File) => {
-    if (file.size > 2.5 * 1024 * 1024) throw new Error("Maximum file size is 2.5 MB.");
-    const data = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = reject; reader.readAsDataURL(file); });
-    if (isDemoMode) return data;
-    if (!user) throw new Error("Sign in required.");
-    const result = await apiPost<{ url: string }>("file/upload", { idToken: user.idToken, file: { name: file.name, mimeType: file.type, data }, prefix: "LFX_MEDIA" });
-    if (!result.data?.url) throw new Error("Upload did not return a URL.");
-    return result.data.url;
   };
 
   const saveContent = () => run(async () => {
@@ -133,13 +143,15 @@ export function AdminStudio() {
   }, language === "bm" ? "Senarai aset disimpan." : "Asset list saved.");
 
   const loanDecision = (loanId: string, decision: "APPROVED" | "REJECTED") => {
-    const reason = decision === "REJECTED" ? window.prompt("Reason for rejection:") : "";
-    if (decision === "REJECTED" && reason === null) return;
+    if (decision === "REJECTED") {
+      setRejectingLoanId(loanId);
+      return;
+    }
     return run(async () => {
       if (isDemoMode) {
         const next = loans.map((loan) => loan.loan_id === loanId ? { ...loan, status: decision, approved_by: user?.email || "demo.admin@ipg.edu.my", qr_code_url: decision === "APPROVED" ? `/loan/verify?loanId=${loan.loan_id}&token=demo` : "" } as Loan : loan);
         setLoans(next); demoStore.saveLoans(next);
-      } else if (user) { await apiPost("loan/approve", { idToken: user.idToken, loan_id: loanId, decision, reason: reason || "" }); await loadData(); }
+      } else if (user) { await apiPost("loan/approve", { idToken: user.idToken, loan_id: loanId, decision, reason: "" }); await loadData(); }
     }, `Loan ${decision.toLowerCase()}.`);
   };
 
@@ -161,20 +173,16 @@ export function AdminStudio() {
     const item = ikes.find((a) => a.application_id === applicationId);
     if (!item) return;
 
-    let reason = "";
+    if (status === "REJECTED") {
+      setRejectingIkesId(applicationId);
+      return;
+    }
+
     let amountApproved = 0;
     let repaymentTermDays = 0;
     let paymentDate = "";
 
-    if (status === "REJECTED") {
-      const promptReason = window.prompt("Reason for rejection (required):");
-      if (promptReason === null) return;
-      reason = promptReason.trim();
-      if (!reason) {
-        setFlash({ type: "error", text: "A rejection reason is required." });
-        return;
-      }
-    } else if (status === "APPROVED") {
+    if (status === "APPROVED") {
       const amtStr = window.prompt("Enter approved amount (RM):", String(item.amount_requested));
       if (amtStr === null) return;
       amountApproved = Number(amtStr);
@@ -214,9 +222,6 @@ export function AdminStudio() {
               patch.outstanding_amount = amountApproved;
               patch.amount_repaid = 0;
               patch.decision_date = new Date().toISOString().slice(0, 10);
-            } else if (status === "REJECTED") {
-              patch.rejection_reason = reason;
-              patch.notes = reason ? `${app.notes || ""}${app.notes ? " | " : ""}Admin: ${reason}` : app.notes;
             } else if (status === "PAID") {
               patch.payment_date = paymentDate;
               const termDays = app.repayment_term_days || 0;
@@ -245,13 +250,6 @@ export function AdminStudio() {
             decision: "APPROVED",
             amount_approved: amountApproved,
             repayment_term_days: repaymentTermDays
-          });
-        } else if (status === "REJECTED") {
-          await apiPost("ikes/approve", {
-            idToken: user.idToken,
-            application_id: applicationId,
-            decision: "REJECTED",
-            reason
           });
         } else if (status === "PAID") {
           await apiPost("ikes/status", {
@@ -373,13 +371,49 @@ export function AdminStudio() {
     <aside className="admin-sidebar"><div className="admin-brand"><Image src="/lfx-mark.svg" alt="LFX" width={52} height={52}/><span><strong>LFX Studio</strong><small>{session.email}</small></span></div><nav>{tabs.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => { setTab(item.id); setFlash(null); }}><Icon name={item.icon}/>{language === "bm" ? item.bm : item.en}</button>)}</nav><Link href="/" className="admin-back"><Icon name="arrow" size={17}/>{language === "bm" ? "Lihat portal" : "View portal"}</Link></aside>
     <main className="admin-main"><header className="admin-topbar"><div><span className="eyebrow">Office Operating System</span><h1>{tabs.find((item) => item.id === tab)?.[language]}</h1></div><span className="mode-pill">{isDemoMode ? "DEMO" : "LIVE"}</span></header><FlashMessage flash={flash}/>
       {tab === "overview" && <Overview assets={assets} loans={loans} ikes={ikes} tabung={tabung}/>} 
-      {tab === "content" && <ContentEditor content={content} setContent={setContent} onSave={saveContent} onUpload={uploadMedia} busy={busy}/>} 
-      {tab === "assets" && <AssetAdmin assets={assets} setAssets={setAssets} loans={loans} onSave={saveAssets} onDecision={loanDecision} onScan={scanLoan} busy={busy}/>} 
+      {tab === "content" && <ContentEditor content={content} setContent={setContent} onSave={saveContent} idToken={user?.idToken || ""} busy={busy}/>}
+      {tab === "assets" && <AssetAdmin assets={assets} setAssets={setAssets} loans={loans} onSave={saveAssets} onDecision={loanDecision} onScan={scanLoan} idToken={user?.idToken || ""} busy={busy}/>}
       {tab === "ikes" && <IkesAdmin applications={ikes} onStatus={ikesDecision} onRepay={ikesRepayment} busy={busy}/>}
       {tab === "tabung" && <TabungAdmin records={tabung} onCreate={saveTabungRecord} busy={busy}/>} 
-      {tab === "announcements" && <AnnouncementAdmin items={announcements} setItems={setAnnouncements} onSave={saveAnnouncements} busy={busy}/>} 
+      {tab === "announcements" && <AnnouncementAdmin items={announcements} setItems={setAnnouncements} onSave={saveAnnouncements} idToken={user?.idToken || ""} busy={busy}/>}
       {tab === "organisation" && <OrganisationEditor items={organisationItems} setItems={setOrganisationItems} onSave={saveOrgItems} busy={busy}/>}
     </main>
+
+    <RejectionDialog
+      isOpen={rejectingLoanId !== null}
+      title={language === "bm" ? `Tolak Permohonan iAset ${rejectingLoanId}` : `Reject iAset Request ${rejectingLoanId}`}
+      onClose={() => setRejectingLoanId(null)}
+      onSubmit={async (reason) => {
+        if (!rejectingLoanId) return;
+        await run(async () => {
+          if (isDemoMode) {
+            const next = loans.map((loan) => loan.loan_id === rejectingLoanId ? { ...loan, status: "REJECTED", approved_by: user?.email || "demo.admin@ipg.edu.my" } as Loan : loan);
+            setLoans(next); demoStore.saveLoans(next);
+          } else if (user) {
+            await apiPost("loan/approve", { idToken: user.idToken, loan_id: rejectingLoanId, decision: "REJECTED", reason });
+            await loadData();
+          }
+        }, `Loan rejected.`);
+      }}
+    />
+
+    <RejectionDialog
+      isOpen={rejectingIkesId !== null}
+      title={language === "bm" ? `Tolak Permohonan iKES ${rejectingIkesId}` : `Reject iKES Application ${rejectingIkesId}`}
+      onClose={() => setRejectingIkesId(null)}
+      onSubmit={async (reason) => {
+        if (!rejectingIkesId) return;
+        await run(async () => {
+          if (isDemoMode) {
+            const next = ikes.map((app) => app.application_id === rejectingIkesId ? { ...app, status: "REJECTED", rejection_reason: reason, notes: reason ? `${app.notes || ""}${app.notes ? " | " : ""}Admin: ${reason}` : app.notes, approved_by: user?.email || "demo.admin@ipg.edu.my" } as IkesApplication : app);
+            setIkes(next); demoStore.saveIkes(next);
+          } else if (user) {
+            await apiPost("ikes/approve", { idToken: user.idToken, application_id: rejectingIkesId, decision: "REJECTED", reason });
+            await loadData();
+          }
+        }, `iKES application rejected.`);
+      }}
+    />
   </div>;
 }
 
@@ -391,23 +425,77 @@ function Overview({ assets, loans, ikes, tabung }: { assets: Asset[]; loans: Loa
     { label: "iKES pending", value: ikes.filter((item) => item.status === "PENDING").length, icon: "heart" },
     { label: "Friday Fund balance", value: money(balance), icon: "wallet" }
   ];
-  return <><div className="admin-metrics">{metrics.map((item) => <article key={item.label}><span><Icon name={item.icon}/></span><strong>{item.value}</strong><small>{item.label}</small></article>)}</div><div className="admin-grid"><section className="admin-card"><div className="admin-card__heading"><h2>Expected returns</h2></div><div className="admin-list">{loans.filter((item) => item.status === "ACTIVE").slice(0, 6).map((loan) => <article key={loan.loan_id}><div><strong>{loan.asset_name || loan.asset_id}</strong><span>{loan.user_name || loan.user_id}</span></div><time>{formatDate(loan.date_returned_expected)}</time></article>)}</div></section><section className="admin-card"><div className="admin-card__heading"><h2>Pending applications</h2></div><div className="admin-list">{[...loans.filter((item) => item.status === "PENDING").map((item) => ({ id: item.loan_id, title: item.asset_name || item.asset_id, meta: "iAset" })), ...ikes.filter((item) => item.status === "PENDING").map((item) => ({ id: item.application_id, title: `${item.type} · ${money(item.amount_requested)}`, meta: "iKES" }))].slice(0, 8).map((item) => <article key={item.id}><div><strong>{item.title}</strong><span>{item.id}</span></div><em>{item.meta}</em></article>)}</div></section></div></>;
+  return (
+    <>
+      <div className="admin-metrics">
+        {metrics.map((item) => (
+          <article key={item.label}>
+            <span>
+              <Icon name={item.icon} />
+            </span>
+            <strong>{item.value}</strong>
+            <small>{item.label}</small>
+          </article>
+        ))}
+      </div>
+
+      <div className="admin-grid" style={{ marginBottom: "24px" }}>
+        <section className="admin-card" style={{ padding: "20px" }}>
+          <TabungChart records={tabung} />
+        </section>
+        <section className="admin-card" style={{ padding: "20px" }}>
+          <AssetUtilisationChart assets={assets} />
+        </section>
+      </div>
+
+      <div className="admin-grid">
+        <section className="admin-card">
+          <div className="admin-card__heading">
+            <h2>Expected returns</h2>
+          </div>
+          <div className="admin-list">
+            {loans
+              .filter((item) => item.status === "ACTIVE")
+              .slice(0, 6)
+              .map((loan) => (
+                <article key={loan.loan_id}>
+                  <div>
+                    <strong>{loan.asset_name || loan.asset_id}</strong>
+                    <span>{loan.user_name || loan.user_id}</span>
+                  </div>
+                  <time>{formatDate(loan.date_returned_expected)}</time>
+                </article>
+              ))}
+          </div>
+        </section>
+
+        <section className="admin-card">
+          <div className="admin-card__heading">
+            <h2>Pending applications</h2>
+          </div>
+          <div className="admin-list">
+            {[
+              ...loans.filter((item) => item.status === "PENDING").map((item) => ({ id: item.loan_id, title: item.asset_name || item.asset_id, meta: "iAset" })),
+              ...ikes.filter((item) => item.status === "PENDING").map((item) => ({ id: item.application_id, title: `${item.type} · ${money(item.amount_requested)}`, meta: "iKES" }))
+            ]
+              .slice(0, 8)
+              .map((item) => (
+                <article key={item.id}>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>{item.id}</span>
+                  </div>
+                  <em>{item.meta}</em>
+                </article>
+              ))}
+          </div>
+        </section>
+      </div>
+    </>
+  );
 }
 
-function ContentEditor({ content, setContent, onSave, onUpload, busy }: { content: SiteContent; setContent: (content: SiteContent) => void; onSave: () => void; onUpload: (file: File) => Promise<string>; busy: boolean }) {
-  const [mediaTarget, setMediaTarget] = useState<"logo" | "favicon" | "donation">("logo");
-  const [mediaBusy, setMediaBusy] = useState(false);
-  const [mediaMessage, setMediaMessage] = useState("");
-  const handleMedia = async (file: File) => {
-    setMediaBusy(true); setMediaMessage("");
-    try {
-      const url = await onUpload(file);
-      if (mediaTarget === "logo") setContent({ ...content, site: { ...content.site, logoUrl: url } });
-      else if (mediaTarget === "favicon") setContent({ ...content, site: { ...content.site, faviconUrl: url } });
-      else setContent({ ...content, donation: { ...content.donation, qrImageUrl: url } });
-      setMediaMessage("Uploaded and applied. Save website content to publish.");
-    } catch (error) { setMediaMessage(error instanceof Error ? error.message : "Upload failed"); } finally { setMediaBusy(false); }
-  };
+function ContentEditor({ content, setContent, onSave, busy, idToken }: { content: SiteContent; setContent: (content: SiteContent) => void; onSave: () => void; busy: boolean; idToken: string }) {
   const updateSite = (patch: Partial<SiteContent["site"]>) => setContent({ ...content, site: { ...content.site, ...patch } });
   const updateMenu = (index: number, patch: Partial<MenuItem>) => { const navigation = [...content.navigation]; navigation[index] = { ...navigation[index], ...patch }; setContent({ ...content, navigation }); };
   const deleteMenu = (index: number) => setContent({ ...content, navigation: content.navigation.filter((_, i) => i !== index) });
@@ -416,7 +504,40 @@ function ContentEditor({ content, setContent, onSave, onUpload, busy }: { conten
   const addFooterLink = () => setContent({ ...content, footer: { ...content.footer, links: [...content.footer.links, { id: uid("footer"), label: { bm: "Pautan baharu", en: "New link" }, href: "/", enabled: true }] } });
   const addPage = () => setContent({ ...content, customPages: [...content.customPages, { id: uid("page"), slug: `page-${content.customPages.length + 1}`, title: { bm: "Halaman Baharu", en: "New Page" }, summary: { bm: "Ringkasan halaman", en: "Page summary" }, published: false, sections: [{ id: uid("section"), heading: { bm: "Tajuk Seksyen", en: "Section Heading" }, body: { bm: "Kandungan halaman.", en: "Page content." } }] }] });
   return <div className="admin-editor">
-    <section className="admin-card"><div className="admin-card__heading"><div><h2>Media uploader</h2><p>Upload to Google Drive and apply to a key visual field.</p></div></div><div className="media-uploader"><select value={mediaTarget} onChange={(e) => setMediaTarget(e.target.value as "logo" | "favicon" | "donation")}><option value="logo">Website logo</option><option value="favicon">Favicon</option><option value="donation">Donation QR</option></select><label className="button button--outline"><Icon name="upload" size={17}/>{mediaBusy ? "Uploading…" : "Choose file"}<input hidden disabled={mediaBusy} type="file" accept="image/*" onChange={(e) => { const file=e.target.files?.[0]; if(file) void handleMedia(file); e.currentTarget.value=""; }}/></label></div>{mediaMessage && <p className="muted">{mediaMessage}</p>}</section>
+    <section className="admin-card">
+      <div className="admin-card__heading">
+        <div>
+          <h2>Media Studio</h2>
+          <p>Upload files securely to Google Drive and apply them to the configuration.</p>
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px" }}>
+        <MediaUploader
+          purpose="logo"
+          idToken={idToken}
+          currentUrl={content.site.logoUrl}
+          onUploadSuccess={(url) => setContent({ ...content, site: { ...content.site, logoUrl: url } })}
+          onRemove={() => setContent({ ...content, site: { ...content.site, logoUrl: "" } })}
+          label="Website Logo"
+        />
+        <MediaUploader
+          purpose="favicon"
+          idToken={idToken}
+          currentUrl={content.site.faviconUrl}
+          onUploadSuccess={(url) => setContent({ ...content, site: { ...content.site, faviconUrl: url } })}
+          onRemove={() => setContent({ ...content, site: { ...content.site, faviconUrl: "" } })}
+          label="Favicon"
+        />
+        <MediaUploader
+          purpose="donation_qr"
+          idToken={idToken}
+          currentUrl={content.donation.qrImageUrl}
+          onUploadSuccess={(url) => setContent({ ...content, donation: { ...content.donation, qrImageUrl: url } })}
+          onRemove={() => setContent({ ...content, donation: { ...content.donation, qrImageUrl: "" } })}
+          label="Donation QR"
+        />
+      </div>
+    </section>
     <section className="admin-card"><div className="admin-card__heading"><div><h2>Site identity</h2><p>Brand, logo, favicon and colours.</p></div></div><div className="form-grid"><label><span>Website name</span><input value={content.site.name} onChange={(e) => updateSite({ name: e.target.value })}/></label><label><span>Short name</span><input value={content.site.shortName} onChange={(e) => updateSite({ shortName: e.target.value })}/></label><label><span>Logo URL</span><input value={content.site.logoUrl} onChange={(e) => updateSite({ logoUrl: e.target.value })}/></label><label><span>Favicon URL</span><input value={content.site.faviconUrl} onChange={(e) => updateSite({ faviconUrl: e.target.value })}/></label><label><span>Primary colour</span><div className="colour-field"><input type="color" value={content.site.primaryColor} onChange={(e) => updateSite({ primaryColor: e.target.value })}/><input value={content.site.primaryColor} onChange={(e) => updateSite({ primaryColor: e.target.value })}/></div></label><label><span>Accent colour</span><div className="colour-field"><input type="color" value={content.site.accentColor} onChange={(e) => updateSite({ accentColor: e.target.value })}/><input value={content.site.accentColor} onChange={(e) => updateSite({ accentColor: e.target.value })}/></div></label></div><LocalizedInputs label="Tagline" value={content.site.tagline} onChange={(tagline) => updateSite({ tagline })}/><LocalizedInputs label="Description" multiline value={content.site.description} onChange={(description) => updateSite({ description })}/></section>
     <section className="admin-card"><div className="admin-card__heading"><div><h2>Homepage hero</h2><p>Edit the main message and buttons.</p></div></div><LocalizedInputs label="Eyebrow" value={content.hero.eyebrow} onChange={(eyebrow) => setContent({ ...content, hero: { ...content.hero, eyebrow } })}/><LocalizedInputs label="Title" value={content.hero.title} onChange={(title) => setContent({ ...content, hero: { ...content.hero, title } })}/><LocalizedInputs label="Description" multiline value={content.hero.description} onChange={(description) => setContent({ ...content, hero: { ...content.hero, description } })}/><div className="form-grid"><label><span>Primary link</span><input value={content.hero.primaryButton.href} onChange={(e) => setContent({ ...content, hero: { ...content.hero, primaryButton: { ...content.hero.primaryButton, href: e.target.value } } })}/></label><label><span>Secondary link</span><input value={content.hero.secondaryButton.href} onChange={(e) => setContent({ ...content, hero: { ...content.hero, secondaryButton: { ...content.hero.secondaryButton, href: e.target.value } } })}/></label></div><LocalizedInputs label="Primary button" value={content.hero.primaryButton.label} onChange={(label) => setContent({ ...content, hero: { ...content.hero, primaryButton: { ...content.hero.primaryButton, label } } })}/><LocalizedInputs label="Secondary button" value={content.hero.secondaryButton.label} onChange={(label) => setContent({ ...content, hero: { ...content.hero, secondaryButton: { ...content.hero.secondaryButton, label } } })}/></section>
     <section className="admin-card"><div className="admin-card__heading"><div><h2>Navigation</h2><p>Names, links, visibility and ordering.</p></div><button className="button button--small button--outline" onClick={addMenu}><Icon name="plus" size={16}/>Add menu</button></div><div className="repeat-list">{content.navigation.map((item, index) => <article key={item.id}><div className="repeat-list__fields"><input aria-label="BM label" value={item.label.bm} onChange={(e) => updateMenu(index, { label: { ...item.label, bm: e.target.value } })}/><input aria-label="EN label" value={item.label.en} onChange={(e) => updateMenu(index, { label: { ...item.label, en: e.target.value } })}/><input aria-label="Link" value={item.href} onChange={(e) => updateMenu(index, { href: e.target.value })}/><label className="check-field"><input type="checkbox" checked={item.enabled} onChange={(e) => updateMenu(index, { enabled: e.target.checked })}/>Visible</label></div><button className="danger-icon" onClick={() => deleteMenu(index)}><Icon name="trash" size={17}/></button></article>)}</div></section>
@@ -424,18 +545,473 @@ function ContentEditor({ content, setContent, onSave, onUpload, busy }: { conten
     <section className="admin-card"><div className="admin-card__heading"><div><h2>Homepage modules</h2><p>Edit the four primary feature cards.</p></div></div><div className="page-editor-list">{content.features.map((feature,index) => <article key={feature.id}><div className="form-grid"><label><span>Icon name</span><input value={feature.icon} onChange={(e) => { const features=[...content.features]; features[index]={...feature,icon:e.target.value}; setContent({...content,features}); }}/></label><label><span>Link</span><input value={feature.href} onChange={(e) => { const features=[...content.features]; features[index]={...feature,href:e.target.value}; setContent({...content,features}); }}/></label></div><LocalizedInputs label="Title" value={feature.title} onChange={(title) => { const features=[...content.features]; features[index]={...feature,title}; setContent({...content,features}); }}/><LocalizedInputs label="Description" multiline value={feature.description} onChange={(description) => { const features=[...content.features]; features[index]={...feature,description}; setContent({...content,features}); }}/></article>)}</div></section>
     <section className="admin-card"><div className="admin-card__heading"><div><h2>Footer</h2><p>Edit footer text, address and links.</p></div><button className="button button--small button--outline" onClick={addFooterLink}><Icon name="plus" size={16}/>Add footer link</button></div><LocalizedInputs label="About" multiline value={content.footer.about} onChange={(about) => setContent({ ...content, footer: { ...content.footer, about } })}/><label><span>Office address</span><input value={content.footer.address} onChange={(e) => setContent({ ...content, footer: { ...content.footer, address: e.target.value } })}/></label><LocalizedInputs label="Copyright" value={content.footer.copyright} onChange={(copyright) => setContent({ ...content, footer: { ...content.footer, copyright } })}/><div className="repeat-list">{content.footer.links.map((item,index) => <article key={item.id}><div className="repeat-list__fields"><input value={item.label.bm} aria-label="Footer BM" onChange={(e) => updateFooterLink(index,{label:{...item.label,bm:e.target.value}})}/><input value={item.label.en} aria-label="Footer EN" onChange={(e) => updateFooterLink(index,{label:{...item.label,en:e.target.value}})}/><input value={item.href} aria-label="Footer link" onChange={(e) => updateFooterLink(index,{href:e.target.value})}/><label className="check-field"><input type="checkbox" checked={item.enabled} onChange={(e) => updateFooterLink(index,{enabled:e.target.checked})}/>Visible</label></div><button className="danger-icon" onClick={() => setContent({...content,footer:{...content.footer,links:content.footer.links.filter((_,i)=>i!==index)}})}><Icon name="trash" size={17}/></button></article>)}</div></section>
     <section className="admin-card"><div className="admin-card__heading"><div><h2>Friday Fund donation</h2><p>Public donation method and weekly target.</p></div></div><LocalizedInputs label="Heading" value={content.donation.heading} onChange={(heading) => setContent({ ...content, donation: { ...content.donation, heading } })}/><LocalizedInputs label="Description" multiline value={content.donation.description} onChange={(description) => setContent({ ...content, donation: { ...content.donation, description } })}/><div className="form-grid"><label><span>Weekly target (RM)</span><input type="number" value={content.donation.target} onChange={(e) => setContent({ ...content, donation: { ...content.donation, target: Number(e.target.value) } })}/></label><label><span>Payment link</span><input value={content.donation.paymentUrl} onChange={(e) => setContent({ ...content, donation: { ...content.donation, paymentUrl: e.target.value } })}/></label><label><span>Bank</span><input value={content.donation.bankName} onChange={(e) => setContent({ ...content, donation: { ...content.donation, bankName: e.target.value } })}/></label><label><span>Account name</span><input value={content.donation.accountName} onChange={(e) => setContent({ ...content, donation: { ...content.donation, accountName: e.target.value } })}/></label><label><span>Account number</span><input value={content.donation.accountNumber} onChange={(e) => setContent({ ...content, donation: { ...content.donation, accountNumber: e.target.value } })}/></label><label><span>QR image URL</span><input value={content.donation.qrImageUrl} onChange={(e) => setContent({ ...content, donation: { ...content.donation, qrImageUrl: e.target.value } })}/></label></div></section>
-    <section className="admin-card"><div className="admin-card__heading"><div><h2>Custom pages</h2><p>Add simple bilingual information pages.</p></div><button className="button button--small button--outline" onClick={addPage}><Icon name="plus" size={16}/>Add page</button></div><div className="page-editor-list">{content.customPages.map((page, pageIndex) => <article key={page.id}><div className="page-editor-list__top"><strong>/{page.slug}</strong><label className="check-field"><input type="checkbox" checked={page.published} onChange={(e) => { const pages = [...content.customPages]; pages[pageIndex] = { ...page, published: e.target.checked }; setContent({ ...content, customPages: pages }); }}/>Published</label><button className="danger-icon" onClick={() => setContent({ ...content, customPages: content.customPages.filter((_, i) => i !== pageIndex) })}><Icon name="trash" size={17}/></button></div><div className="form-grid"><label><span>Slug</span><input value={page.slug} onChange={(e) => { const pages = [...content.customPages]; pages[pageIndex] = { ...page, slug: e.target.value.replace(/[^a-z0-9-]/g, "-") }; setContent({ ...content, customPages: pages }); }}/></label><label><span>Hero image URL</span><input value={page.heroImage || ""} onChange={(e) => { const pages = [...content.customPages]; pages[pageIndex] = { ...page, heroImage: e.target.value }; setContent({ ...content, customPages: pages }); }}/></label></div><LocalizedInputs label="Page title" value={page.title} onChange={(title) => { const pages = [...content.customPages]; pages[pageIndex] = { ...page, title }; setContent({ ...content, customPages: pages }); }}/><LocalizedInputs label="Summary" multiline value={page.summary} onChange={(summary) => { const pages = [...content.customPages]; pages[pageIndex] = { ...page, summary }; setContent({ ...content, customPages: pages }); }}/>{page.sections.map((section, sectionIndex) => <div className="section-editor" key={section.id}><LocalizedInputs label={`Section ${sectionIndex + 1} heading`} value={section.heading} onChange={(heading) => { const pages = [...content.customPages]; const sections = [...page.sections]; sections[sectionIndex] = { ...section, heading }; pages[pageIndex] = { ...page, sections }; setContent({ ...content, customPages: pages }); }}/><LocalizedInputs label="Body" multiline value={section.body} onChange={(body) => { const pages = [...content.customPages]; const sections = [...page.sections]; sections[sectionIndex] = { ...section, body }; pages[pageIndex] = { ...page, sections }; setContent({ ...content, customPages: pages }); }}/></div>)}</article>)}</div></section>
+    <section className="admin-card">
+      <div className="admin-card__heading">
+        <div>
+          <h2>Custom pages</h2>
+          <p>Add and build bilingual, block-based information pages.</p>
+        </div>
+        <button className="button button--small button--outline" onClick={addPage}>
+          <Icon name="plus" size={16} /> Add page
+        </button>
+      </div>
+      <div className="page-editor-list">
+        {content.customPages.map((page, pageIndex) => {
+          // Normalize blocks on-the-fly for editing
+          const blocks = normalizePageBlocks(page);
+
+          const updateBlocks = (nextBlocks: PageBlock[]) => {
+            const pages = [...content.customPages];
+            pages[pageIndex] = { ...page, blocks: nextBlocks };
+            setContent({ ...content, customPages: pages });
+          };
+
+          const addBlock = (type: PageBlock["type"]) => {
+            let newBlock: PageBlock;
+            const newId = uid("blk");
+
+            if (type === "richText") {
+              newBlock = { type: "richText", id: newId, content: { bm: "", en: "" } };
+            } else if (type === "image") {
+              newBlock = { type: "image", id: newId, imageUrl: "", alt: { bm: "", en: "" }, caption: { bm: "", en: "" }, isDecorative: false };
+            } else if (type === "cta") {
+              newBlock = { type: "cta", id: newId, title: { bm: "", en: "" }, description: { bm: "", en: "" }, label: { bm: "Klik disini", en: "Click here" }, href: "", variant: "primary" };
+            } else if (type === "faq") {
+              newBlock = { type: "faq", id: newId, items: [] };
+            } else {
+              newBlock = { type: "documents", id: newId, title: { bm: "", en: "" }, items: [] };
+            }
+
+            updateBlocks([...blocks, newBlock]);
+          };
+
+          const deleteBlock = (bIndex: number) => {
+            updateBlocks(blocks.filter((_, idx) => idx !== bIndex));
+          };
+
+          const moveBlock = (bIndex: number, direction: "up" | "down") => {
+            if (direction === "up" && bIndex === 0) return;
+            if (direction === "down" && bIndex === blocks.length - 1) return;
+            const next = [...blocks];
+            const swapIdx = direction === "up" ? bIndex - 1 : bIndex + 1;
+            const temp = next[bIndex];
+            next[bIndex] = next[swapIdx];
+            next[swapIdx] = temp;
+            updateBlocks(next);
+          };
+
+          return (
+            <article key={page.id} style={{ border: "1px solid var(--line)", padding: "20px", borderRadius: "8px", marginBottom: "24px", background: "var(--bg)" }}>
+              <div className="page-editor-list__top">
+                <strong>/{page.slug}</strong>
+                <label className="check-field">
+                  <input
+                    type="checkbox"
+                    checked={page.published}
+                    onChange={(e) => {
+                      const pages = [...content.customPages];
+                      pages[pageIndex] = { ...page, published: e.target.checked };
+                      setContent({ ...content, customPages: pages });
+                    }}
+                  />
+                  Published
+                </label>
+                <button
+                  className="danger-icon"
+                  type="button"
+                  onClick={() =>
+                    setContent({
+                      ...content,
+                      customPages: content.customPages.filter((_, i) => i !== pageIndex)
+                    })
+                  }
+                >
+                  <Icon name="trash" size={17} />
+                </button>
+              </div>
+
+              <div className="form-grid">
+                <label>
+                  <span>Slug</span>
+                  <input
+                    value={page.slug}
+                    onChange={(e) => {
+                      const pages = [...content.customPages];
+                      pages[pageIndex] = { ...page, slug: e.target.value.replace(/[^a-z0-9-]/g, "-") };
+                      setContent({ ...content, customPages: pages });
+                    }}
+                  />
+                </label>
+                <label>
+                  <span>Hero image URL</span>
+                  <input
+                    value={page.heroImage || ""}
+                    onChange={(e) => {
+                      const pages = [...content.customPages];
+                      pages[pageIndex] = { ...page, heroImage: e.target.value };
+                      setContent({ ...content, customPages: pages });
+                    }}
+                  />
+                </label>
+              </div>
+
+              <LocalizedInputs
+                label="Page title"
+                value={page.title}
+                onChange={(title) => {
+                  const pages = [...content.customPages];
+                  pages[pageIndex] = { ...page, title };
+                  setContent({ ...content, customPages: pages });
+                }}
+              />
+              <LocalizedInputs
+                label="Summary"
+                multiline
+                value={page.summary}
+                onChange={(summary) => {
+                  const pages = [...content.customPages];
+                  pages[pageIndex] = { ...page, summary };
+                  setContent({ ...content, customPages: pages });
+                }}
+              />
+
+              {/* Block List Editor */}
+              <div style={{ marginTop: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                <h4 style={{ color: "#0d4d41", borderBottom: "1px solid var(--line)", paddingBottom: "8px", margin: 0 }}>
+                  Page Blocks ({blocks.length})
+                </h4>
+
+                {blocks.map((block, bIndex) => {
+                  const updateBlockValue = (patchedBlock: PageBlock) => {
+                    const next = [...blocks];
+                    next[bIndex] = patchedBlock;
+                    updateBlocks(next);
+                  };
+
+                  return (
+                    <div
+                      key={block.id}
+                      style={{
+                        padding: "16px",
+                        border: "1px solid var(--line)",
+                        borderRadius: "6px",
+                        background: "var(--soft-bg)",
+                        position: "relative"
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: "12px",
+                          borderBottom: "1px dashed var(--line)",
+                          paddingBottom: "8px"
+                        }}
+                      >
+                        <strong style={{ textTransform: "uppercase", fontSize: "0.8rem", color: "#0d4d41" }}>
+                          Block #{bIndex + 1}: {block.type}
+                        </strong>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <button
+                            type="button"
+                            className="button button--small button--outline"
+                            style={{ padding: "2px 8px" }}
+                            disabled={bIndex === 0}
+                            onClick={() => moveBlock(bIndex, "up")}
+                          >
+                            ▲
+                          </button>
+                          <button
+                            type="button"
+                            className="button button--small button--outline"
+                            style={{ padding: "2px 8px" }}
+                            disabled={bIndex === blocks.length - 1}
+                            onClick={() => moveBlock(bIndex, "down")}
+                          >
+                            ▼
+                          </button>
+                          <button
+                            type="button"
+                            className="danger-icon"
+                            style={{ padding: "4px" }}
+                            onClick={() => deleteBlock(bIndex)}
+                          >
+                            <Icon name="trash" size={16} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {block.type === "richText" && (
+                        <LocalizedInputs
+                          label="Content (Markdown supported)"
+                          multiline
+                          value={block.content}
+                          onChange={(content) => updateBlockValue({ ...block, content })}
+                        />
+                      )}
+
+                      {block.type === "image" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                          <label className="check-field">
+                            <input
+                              type="checkbox"
+                              checked={block.isDecorative || false}
+                              onChange={(e) => updateBlockValue({ ...block, isDecorative: e.target.checked })}
+                            />
+                            <span>Decorative Image (hides alternative text)</span>
+                          </label>
+
+                          <MediaUploader
+                            purpose="logo"
+                            idToken={idToken}
+                            currentUrl={block.imageUrl}
+                            onUploadSuccess={(url) => updateBlockValue({ ...block, imageUrl: url })}
+                            onRemove={() => updateBlockValue({ ...block, imageUrl: "" })}
+                            label="Image File"
+                          />
+
+                          {!block.isDecorative && (
+                            <LocalizedInputs
+                              label="Alternative Text *"
+                              value={block.alt}
+                              onChange={(alt) => updateBlockValue({ ...block, alt })}
+                            />
+                          )}
+
+                          <LocalizedInputs
+                            label="Caption"
+                            value={block.caption || { bm: "", en: "" }}
+                            onChange={(caption) => updateBlockValue({ ...block, caption })}
+                          />
+                        </div>
+                      )}
+
+                      {block.type === "cta" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                          <LocalizedInputs
+                            label="Title"
+                            value={block.title}
+                            onChange={(title) => updateBlockValue({ ...block, title })}
+                          />
+                          <LocalizedInputs
+                            label="Description"
+                            multiline
+                            value={block.description || { bm: "", en: "" }}
+                            onChange={(description) => updateBlockValue({ ...block, description })}
+                          />
+                          <LocalizedInputs
+                            label="Button Label"
+                            value={block.label}
+                            onChange={(label) => updateBlockValue({ ...block, label })}
+                          />
+                          <div className="form-grid">
+                            <label>
+                              <span>Button link (href)</span>
+                              <input
+                                value={block.href}
+                                onChange={(e) => updateBlockValue({ ...block, href: e.target.value })}
+                              />
+                            </label>
+                            <label>
+                              <span>Variant</span>
+                              <select
+                                value={block.variant || "primary"}
+                                onChange={(e) => updateBlockValue({ ...block, variant: e.target.value as "primary" | "secondary" })}
+                              >
+                                <option value="primary">Primary</option>
+                                <option value="secondary">Secondary</option>
+                              </select>
+                            </label>
+                          </div>
+                        </div>
+                      )}
+
+                      {block.type === "faq" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                          {block.items.map((item, qIndex) => {
+                            const updateFaqItem = (patchedItem: typeof item) => {
+                              const nextItems = [...block.items];
+                              nextItems[qIndex] = patchedItem;
+                              updateBlockValue({ ...block, items: nextItems });
+                            };
+
+                            return (
+                              <div
+                                key={item.id}
+                                style={{
+                                  border: "1px dashed var(--line)",
+                                  padding: "12px",
+                                  borderRadius: "4px",
+                                  background: "var(--bg)",
+                                  position: "relative"
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  className="danger-icon"
+                                  style={{ position: "absolute", top: "8px", right: "8px" }}
+                                  onClick={() => {
+                                    const nextItems = block.items.filter((_, idx) => idx !== qIndex);
+                                    updateBlockValue({ ...block, items: nextItems });
+                                  }}
+                                >
+                                  <Icon name="close" size={16} />
+                                </button>
+                                <LocalizedInputs
+                                  label="Question"
+                                  value={item.question}
+                                  onChange={(question) => updateFaqItem({ ...item, question })}
+                                />
+                                <LocalizedInputs
+                                  label="Answer"
+                                  multiline
+                                  value={item.answer}
+                                  onChange={(answer) => updateFaqItem({ ...item, answer })}
+                                />
+                              </div>
+                            );
+                          })}
+                          <button
+                            type="button"
+                            className="button button--small button--outline"
+                            onClick={() => {
+                              const newItem = { id: uid("faq-item"), question: { bm: "", en: "" }, answer: { bm: "", en: "" } };
+                              updateBlockValue({ ...block, items: [...block.items, newItem] });
+                            }}
+                          >
+                            + Add FAQ Item
+                          </button>
+                        </div>
+                      )}
+
+                      {block.type === "documents" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                          <LocalizedInputs
+                            label="Document List Title"
+                            value={block.title || { bm: "", en: "" }}
+                            onChange={(title) => updateBlockValue({ ...block, title })}
+                          />
+
+                          {block.items.map((item, dIndex) => {
+                            const updateDocItem = (patchedItem: typeof item) => {
+                              const nextItems = [...block.items];
+                              nextItems[dIndex] = patchedItem;
+                              updateBlockValue({ ...block, items: nextItems });
+                            };
+
+                            return (
+                              <div
+                                key={item.id}
+                                style={{
+                                  border: "1px dashed var(--line)",
+                                  padding: "12px",
+                                  borderRadius: "4px",
+                                  background: "var(--bg)",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "8px"
+                                }}
+                              >
+                                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                  <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>Document #{dIndex + 1}</span>
+                                  <button
+                                    type="button"
+                                    className="danger-icon"
+                                    onClick={() => {
+                                      const nextItems = block.items.filter((_, idx) => idx !== dIndex);
+                                      updateBlockValue({ ...block, items: nextItems });
+                                    }}
+                                  >
+                                    <Icon name="close" size={16} />
+                                  </button>
+                                </div>
+                                <LocalizedInputs
+                                  label="Title"
+                                  value={item.title}
+                                  onChange={(title) => updateDocItem({ ...item, title })}
+                                />
+
+                                <MediaUploader
+                                  purpose="announcement_pdf"
+                                  idToken={idToken}
+                                  currentUrl={item.url}
+                                  onUploadSuccess={(url) => updateDocItem({ ...item, url })}
+                                  onRemove={() => updateDocItem({ ...item, url: "" })}
+                                  label="Document File (PDF)"
+                                />
+
+                                <div className="form-grid">
+                                  <label>
+                                    <span>File Type (e.g. PDF)</span>
+                                    <input
+                                      value={item.fileType || ""}
+                                      onChange={(e) => updateDocItem({ ...item, fileType: e.target.value })}
+                                    />
+                                  </label>
+                                  <label>
+                                    <span>File Size (optional)</span>
+                                    <input
+                                      value={item.fileSize || ""}
+                                      onChange={(e) => updateDocItem({ ...item, fileSize: e.target.value })}
+                                    />
+                                  </label>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          <button
+                            type="button"
+                            className="button button--small button--outline"
+                            onClick={() => {
+                              const newItem = { id: uid("doc-item"), title: { bm: "", en: "" }, url: "", fileType: "PDF" };
+                              updateBlockValue({ ...block, items: [...block.items, newItem] });
+                            }}
+                          >
+                            + Add Document File
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                <div style={{ borderTop: "1px solid var(--line)", paddingTop: "12px", display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "0.9rem", fontWeight: "bold" }}>Add Block:</span>
+                  <button type="button" className="button button--small button--outline" onClick={() => addBlock("richText")}>+ Rich Text</button>
+                  <button type="button" className="button button--small button--outline" onClick={() => addBlock("image")}>+ Image</button>
+                  <button type="button" className="button button--small button--outline" onClick={() => addBlock("cta")}>+ CTA</button>
+                  <button type="button" className="button button--small button--outline" onClick={() => addBlock("faq")}>+ FAQ</button>
+                  <button type="button" className="button button--small button--outline" onClick={() => addBlock("documents")}>+ Documents</button>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
     <div className="sticky-save"><button disabled={busy} className="button" onClick={onSave}><Icon name="save" size={17}/>{busy ? "Saving…" : "Save website content"}</button></div>
   </div>;
 }
 
-function AssetAdmin({ assets, setAssets, loans, onSave, onDecision, onScan, busy }: { assets: Asset[]; setAssets: (assets: Asset[]) => void; loans: Loan[]; onSave: () => void; onDecision: (id: string, decision: "APPROVED" | "REJECTED") => void; onScan: (value: string) => void; busy: boolean }) {
+function AssetAdmin({ assets, setAssets, loans, onSave, onDecision, onScan, idToken, busy }: { assets: Asset[]; setAssets: (assets: Asset[]) => void; loans: Loan[]; onSave: () => void; onDecision: (id: string, decision: "APPROVED" | "REJECTED") => void; onScan: (value: string) => void; idToken: string; busy: boolean }) {
   const [scan, setScan] = useState("");
   const pending = loans.filter((loan) => loan.status === "PENDING");
   const addAsset = () => setAssets([...assets, { asset_id: uid("AST").toUpperCase(), name: "New asset", category: "General", image_url: "/asset-placeholder.svg", status: "AVAILABLE", description: "" }]);
   return <div className="admin-editor"><section className="admin-card"><div className="admin-card__heading"><div><h2>Pending loan requests</h2><p>Approve or reject with a full audit record.</p></div></div><div className="data-table"><div className="data-table__head"><span>Applicant</span><span>Asset / purpose</span><span>Dates</span><span>Action</span></div>{pending.map((loan) => <div className="data-table__row" key={loan.loan_id}><span><strong>{loan.user_name || loan.user_id}</strong><small>{loan.loan_id}</small></span><span><strong>{loan.asset_name || loan.asset_id}</strong><small>{loan.purpose}</small></span><span><small>{loan.date_borrowed} → {loan.date_returned_expected}</small></span><span className="row-actions"><button disabled={busy} className="approve-button" onClick={() => onDecision(loan.loan_id, "APPROVED")}><Icon name="check" size={15}/>Approve</button><button disabled={busy} className="reject-button" onClick={() => onDecision(loan.loan_id, "REJECTED")}><Icon name="close" size={15}/>Reject</button></span></div>)}</div>{!pending.length && <div className="empty-state">No pending requests.</div>}</section>
     <section className="admin-card"><div className="admin-card__heading"><div><h2>QR handover / return</h2><p>Approved → Active → Returned. The asset status follows automatically.</p></div></div><div className="scan-panel"><label><span>QR URL or loan ID</span><input value={scan} onChange={(e) => setScan(e.target.value)} placeholder="LON-... or scanned URL"/></label><button disabled={!scan || busy} className="button" onClick={() => onScan(scan)}>Process scan</button><QrScanner onScan={(value) => { setScan(value); onScan(value); }}/></div></section>
-    <section className="admin-card"><div className="admin-card__heading"><div><h2>Asset register</h2><p>Edit status, picture URL and asset details.</p></div><button className="button button--small button--outline" onClick={addAsset}><Icon name="plus" size={16}/>Add asset</button></div><div className="asset-admin-list">{assets.map((asset, index) => <article key={asset.asset_id}><CmsImage src={asset.image_url || "/asset-placeholder.svg"} alt="" width={68} height={68}/><div className="asset-admin-fields"><input value={asset.asset_id} onChange={(e) => { const next = [...assets]; next[index] = { ...asset, asset_id: e.target.value }; setAssets(next); }}/><input value={asset.name} onChange={(e) => { const next = [...assets]; next[index] = { ...asset, name: e.target.value }; setAssets(next); }}/><input value={asset.category} onChange={(e) => { const next = [...assets]; next[index] = { ...asset, category: e.target.value }; setAssets(next); }}/><select value={asset.status} onChange={(e) => { const next = [...assets]; next[index] = { ...asset, status: e.target.value as Asset["status"] }; setAssets(next); }}><option>AVAILABLE</option><option>ON_LOAN</option><option>DAMAGED</option><option>MAINTENANCE</option></select><input className="wide" value={asset.image_url} placeholder="Image URL" onChange={(e) => { const next = [...assets]; next[index] = { ...asset, image_url: e.target.value }; setAssets(next); }}/><textarea className="wide" value={asset.description} placeholder="Description" onChange={(e) => { const next = [...assets]; next[index] = { ...asset, description: e.target.value }; setAssets(next); }}/></div><button className="danger-icon" onClick={() => setAssets(assets.filter((_, i) => i !== index))}><Icon name="trash" size={17}/></button></article>)}</div><div className="admin-card__footer"><button disabled={busy} className="button" onClick={onSave}><Icon name="save" size={17}/>Save assets</button></div></section></div>;
+    <section className="admin-card"><div className="admin-card__heading"><div><h2>Asset register</h2><p>Edit status, picture URL and asset details.</p></div><button className="button button--small button--outline" onClick={addAsset}><Icon name="plus" size={16}/>Add asset</button></div><div className="asset-admin-list">{assets.map((asset, index) => <article key={asset.asset_id}><CmsImage src={asset.image_url || "/asset-placeholder.svg"} alt="" width={68} height={68}/><div className="asset-admin-fields"><input value={asset.asset_id} onChange={(e) => { const next = [...assets]; next[index] = { ...asset, asset_id: e.target.value }; setAssets(next); }}/><input value={asset.name} onChange={(e) => { const next = [...assets]; next[index] = { ...asset, name: e.target.value }; setAssets(next); }}/><input value={asset.category} onChange={(e) => { const next = [...assets]; next[index] = { ...asset, category: e.target.value }; setAssets(next); }}/><select value={asset.status} onChange={(e) => { const next = [...assets]; next[index] = { ...asset, status: e.target.value as Asset["status"] }; setAssets(next); }}><option>AVAILABLE</option><option>ON_LOAN</option><option>DAMAGED</option><option>MAINTENANCE</option></select><input className="wide" value={asset.image_url} placeholder="Image URL" onChange={(e) => { const next = [...assets]; next[index] = { ...asset, image_url: e.target.value }; setAssets(next); }}/><textarea className="wide" value={asset.description} placeholder="Description" onChange={(e) => { const next = [...assets]; next[index] = { ...asset, description: e.target.value }; setAssets(next); }}/>
+      <div className="wide" style={{ marginTop: "8px" }}>
+        <MediaUploader
+          purpose="asset_image"
+          idToken={idToken}
+          currentUrl={asset.image_url}
+          onUploadSuccess={(url) => { const next = [...assets]; next[index] = { ...asset, image_url: url }; setAssets(next); }}
+          onRemove={() => { const next = [...assets]; next[index] = { ...asset, image_url: "" }; setAssets(next); }}
+          label="Asset Image"
+        />
+      </div>
+    </div><button className="danger-icon" onClick={() => setAssets(assets.filter((_, i) => i !== index))}><Icon name="trash" size={17}/></button></article>)}</div><div className="admin-card__footer"><button disabled={busy} className="button" onClick={onSave}><Icon name="save" size={17}/>Save assets</button></div></section></div>;
 }
 
 function IkesAdmin({
@@ -734,9 +1310,20 @@ function TabungAdmin({ records, onCreate, busy }: { records: TabungRecord[]; onC
   return <div className="admin-grid"><section className="admin-card"><div className="admin-card__heading"><div><h2>Add record</h2><p>Every collection and distribution becomes part of the public report.</p></div></div><form className="application-form" onSubmit={(e) => { e.preventDefault(); onCreate(form); setForm({ ...form, amount: 0, description: "", recipient: "" }); }}><label><span>Type</span><select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as TabungRecord["type"] })}><option>COLLECTION</option><option>DISTRIBUTION</option></select></label><label><span>Amount (RM)</span><input required type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })}/></label><label><span>Date</span><input required type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}/></label><label><span>Description / purpose</span><textarea required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}/></label>{form.type === "DISTRIBUTION" && <label><span>Recipient (optional)</span><input value={form.recipient || ""} onChange={(e) => setForm({ ...form, recipient: e.target.value })}/></label>}<button disabled={busy} className="button" type="submit"><Icon name="plus" size={17}/>Add record</button></form></section><section className="admin-card"><div className="admin-card__heading"><h2>Recent records</h2></div><div className="admin-list">{records.slice().sort((a,b) => b.date.localeCompare(a.date)).slice(0,12).map((record) => <article key={record.record_id}><div><strong>{record.description}</strong><span>{record.type} · {formatDate(record.date)}</span></div><b className={record.type === "COLLECTION" ? "positive" : "negative"}>{record.type === "COLLECTION" ? "+" : "−"}{money(record.amount)}</b></article>)}</div></section></div>;
 }
 
-function AnnouncementAdmin({ items, setItems, onSave, busy }: { items: Announcement[]; setItems: (items: Announcement[]) => void; onSave: () => void; busy: boolean }) {
+function AnnouncementAdmin({ items, setItems, onSave, idToken, busy }: { items: Announcement[]; setItems: (items: Announcement[]) => void; onSave: () => void; idToken: string; busy: boolean }) {
   const add = () => setItems([{ announcement_id: uid("ANN").toUpperCase(), title: { bm: "Pengumuman baharu", en: "New announcement" }, content: { bm: "Kandungan pengumuman.", en: "Announcement content." }, category: "General", attachment_url: "", publish_date: new Date().toISOString().slice(0,10), created_by: "", responsible_officer: "" }, ...items]);
-  return <section className="admin-card"><div className="admin-card__heading"><div><h2>Announcement Centre</h2><p>Create bilingual notices, categories and PDF links.</p></div><button className="button button--small button--outline" onClick={add}><Icon name="plus" size={16}/>New announcement</button></div><div className="announcement-editor">{items.map((item,index) => <article key={item.announcement_id}><div className="page-editor-list__top"><strong>{item.announcement_id}</strong><button className="danger-icon" onClick={() => setItems(items.filter((_,i) => i !== index))}><Icon name="trash" size={17}/></button></div><LocalizedInputs label="Title" value={item.title} onChange={(title) => { const next=[...items]; next[index]={...item,title}; setItems(next); }}/><LocalizedInputs label="Content" multiline value={item.content} onChange={(content) => { const next=[...items]; next[index]={...item,content}; setItems(next); }}/><div className="form-grid"><label><span>Category</span><input value={item.category} onChange={(e) => { const next=[...items]; next[index]={...item,category:e.target.value}; setItems(next); }}/></label><label><span>Publish date</span><input type="date" value={item.publish_date} onChange={(e) => { const next=[...items]; next[index]={...item,publish_date:e.target.value}; setItems(next); }}/></label><label><span>Attachment URL</span><input value={item.attachment_url} onChange={(e) => { const next=[...items]; next[index]={...item,attachment_url:e.target.value}; setItems(next); }}/></label><label><span>Responsible officer</span><input value={item.responsible_officer || ""} onChange={(e) => { const next=[...items]; next[index]={...item,responsible_officer:e.target.value}; setItems(next); }}/></label></div></article>)}</div><div className="admin-card__footer"><button disabled={busy} className="button" onClick={onSave}><Icon name="save" size={17}/>Save announcements</button></div></section>;
+  return <section className="admin-card"><div className="admin-card__heading"><div><h2>Announcement Centre</h2><p>Create bilingual notices, categories and PDF links.</p></div><button className="button button--small button--outline" onClick={add}><Icon name="plus" size={16}/>New announcement</button></div><div className="announcement-editor">{items.map((item,index) => <article key={item.announcement_id}><div className="page-editor-list__top"><strong>{item.announcement_id}</strong><button className="danger-icon" onClick={() => setItems(items.filter((_,i) => i !== index))}><Icon name="trash" size={17}/></button></div><LocalizedInputs label="Title" value={item.title} onChange={(title) => { const next=[...items]; next[index]={...item,title}; setItems(next); }}/><LocalizedInputs label="Content" multiline value={item.content} onChange={(content) => { const next=[...items]; next[index]={...item,content}; setItems(next); }}/><div className="form-grid"><label><span>Category</span><input value={item.category} onChange={(e) => { const next=[...items]; next[index]={...item,category:e.target.value}; setItems(next); }}/></label><label><span>Publish date</span><input type="date" value={item.publish_date} onChange={(e) => { const next=[...items]; next[index]={...item,publish_date:e.target.value}; setItems(next); }}/></label><label><span>Attachment URL</span><input value={item.attachment_url} onChange={(e) => { const next=[...items]; next[index]={...item,attachment_url:e.target.value}; setItems(next); }}/></label><label><span>Responsible officer</span><input value={item.responsible_officer || ""} onChange={(e) => { const next=[...items]; next[index]={...item,responsible_officer:e.target.value}; setItems(next); }}/></label></div>
+    <div style={{ marginTop: "12px" }}>
+      <MediaUploader
+        purpose="announcement_pdf"
+        idToken={idToken}
+        currentUrl={item.attachment_url}
+        onUploadSuccess={(url) => { const next = [...items]; next[index] = { ...item, attachment_url: url }; setItems(next); }}
+        onRemove={() => { const next = [...items]; next[index] = { ...item, attachment_url: "" }; setItems(next); }}
+        label="Announcement Attachment"
+      />
+    </div>
+  </article>)}</div><div className="admin-card__footer"><button disabled={busy} className="button" onClick={onSave}><Icon name="save" size={17}/>Save announcements</button></div></section>;
 }
 
 function OrganisationEditor({
