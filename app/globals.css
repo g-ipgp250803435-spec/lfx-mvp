@@ -241,7 +241,7 @@ label small { color: var(--muted); font-size: .7rem; }
 .officer-card { position: relative; z-index: 1; width: 270px; min-height: 315px; display: flex; align-items: center; flex-direction: column; padding: 26px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); text-align: center; transition: transform .2s, box-shadow .2s; }
 .officer-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-sm); }
 .officer-card img { width: 116px; height: 116px; object-fit: cover; border-radius: 50%; background: var(--brand-soft); }
-.officer-card > span { margin-top: 19px; color: var(--brand-2); font-size: .68rem; font-weight: 850; text-transform: uppercase; }
+.officer-card > span { margin-top: 19px; color: var(--brand-2); font-size: .68rem; font-weight: 850; }
 .officer-card strong { margin-top: 7px; font: 600 1.42rem/1.1 var(--serif); }
 .officer-card small { color: var(--muted); margin-top: 7px; }
 .modal-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; background: rgba(1,12,10,.74); backdrop-filter: blur(7px); }
