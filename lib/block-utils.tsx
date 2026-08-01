@@ -1,5 +1,5 @@
 import React from "react";
-import type { CustomPage, PageBlock } from "@/lib/types";
+import type { CustomPage, PageBlock, OrgItem } from "@/lib/types";
 
 // URL Security Validator
 export function validateUrl(url: string): string {
@@ -141,4 +141,39 @@ export function normalizePageBlocks(page: CustomPage): PageBlock[] {
   }
 
   return blocks;
+}
+
+// Normalization function to support both modern and legacy/database schema OrgItems
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function normalizeOrgItem(item: any): OrgItem {
+  if (!item) {
+    return {
+      id: "",
+      type: "UNIT",
+      title: "",
+      code: "",
+      member_count: 1,
+      sort_order: 1,
+      is_active: true
+    };
+  }
+
+  const id = item.item_id || item.id || "";
+  const type = (item.item_type || item.type || "UNIT").toUpperCase() as "LEADERSHIP" | "UNIT";
+  const is_active = item.is_active !== undefined ? (item.is_active === true || item.is_active === "true" || item.is_active === 1 || item.is_active === "1") : true;
+
+  return {
+    id,
+    type,
+    item_id: id,
+    item_type: type,
+    title: item.title || "",
+    code: item.code || "",
+    member_count: item.member_count !== undefined ? Number(item.member_count) : 1,
+    sort_order: item.sort_order !== undefined ? Number(item.sort_order) : 1,
+    is_active,
+    parent_id: item.parent_id || "",
+    updated_at: item.updated_at || "",
+    updated_by: item.updated_by || ""
+  };
 }

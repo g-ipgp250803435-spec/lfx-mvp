@@ -177,6 +177,11 @@ export type OrgItem = {
   member_count: number;
   sort_order: number;
   is_active: boolean;
+  item_id?: string;
+  item_type?: "LEADERSHIP" | "UNIT";
+  parent_id?: string;
+  updated_at?: string;
+  updated_by?: string;
 };
 
 export type IkesApplication = {
