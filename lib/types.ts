@@ -123,6 +123,16 @@ export type Loan = {
   date_returned_actual: string;
 };
 
+export type OrgItem = {
+  id: string;
+  type: "LEADERSHIP" | "UNIT";
+  title: string;
+  code: string;
+  member_count: number;
+  sort_order: number;
+  is_active: boolean;
+};
+
 export type IkesApplication = {
   application_id: string;
   user_id: string;
@@ -143,6 +153,12 @@ export type IkesApplication = {
   outstanding_amount?: number;
   is_overdue?: boolean;
   rejection_reason?: string;
+  intake?: string;
+  class_name?: string;
+  phone_number?: string;
+  bank_account_number?: string;
+  bank_name?: string;
+  bank_account_masked?: string;
 };
 
 export type TabungRecord = {

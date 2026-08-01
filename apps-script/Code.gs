@@ -10,7 +10,7 @@ const TABLES = {
   users: ["user_id", "full_name", "role", "is_active"],
   assets: ["asset_id", "name", "category", "image_url", "status", "description"],
   loans: ["loan_id", "asset_id", "user_id", "purpose", "request_date", "approved_by", "status", "qr_code_url", "date_borrowed", "date_returned_expected", "date_returned_actual"],
-  ikes: ["application_id", "user_id", "type", "amount_requested", "ticket_proof_url", "status", "request_date", "approved_by", "notes", "amount_approved", "repayment_term_days", "decision_date", "payment_date", "repayment_due_date", "amount_repaid", "outstanding_amount", "is_overdue", "rejection_reason"],
+  ikes: ["application_id", "user_id", "type", "amount_requested", "ticket_proof_url", "status", "request_date", "approved_by", "notes", "amount_approved", "repayment_term_days", "decision_date", "payment_date", "repayment_due_date", "amount_repaid", "outstanding_amount", "is_overdue", "rejection_reason", "intake", "class_name", "phone_number", "bank_account_number", "bank_name"],
   tabung: ["record_id", "type", "amount", "date", "description", "recorded_by", "recipient"],
   announcements: ["announcement_id", "title", "content", "category", "attachment_url", "publish_date", "created_by", "responsible_officer"],
   audit: ["timestamp", "user_id", "action", "details"],
@@ -23,6 +23,14 @@ function doGet(e) {
     const params = (e && e.parameter) || {};
     switch (action) {
       case "content/get": return json_({ ok: true, data: getSiteContent_() });
+      case "organisation/get": return json_({ ok: true, data: getOrganisationItems_() });
+      case "ikes/options": return json_({ ok: true, data: [
+        "PPISMP Ambilan Ogos 2026 Keluaran Julai 2027",
+        "PISMP Ambilan Ogos 2026 Keluaran Julai 2030",
+        "PISMP Ambilan 2025 Keluaran Julai 2029",
+        "PISMP Ambilan Ogos 2024 Keluaran Julai 2028",
+        "PISMP Ambilan Ogos 2023 Keluaran Julai 2027"
+      ] });
       case "assets/list": return json_({ ok: true, data: listAssets_(false) });
       case "tabung/list": return json_({ ok: true, data: rows_("tbl_tabung") });
       case "announcements/list": return json_({ ok: true, data: listAnnouncements_() });
@@ -55,6 +63,7 @@ function doPost(e) {
       case "ikes/status": return json_({ ok: true, data: withLock_(() => updateIkesStatus_(body)) });
       case "tabung/record": return json_({ ok: true, data: withLock_(() => recordTabung_(body)) });
       case "announcements/saveAll": return json_({ ok: true, data: withLock_(() => saveAnnouncements_(body)) });
+      case "organisation/saveAll": return json_({ ok: true, data: withLock_(() => saveOrganisationItems_(body)) });
       case "content/save": return json_({ ok: true, data: withLock_(() => saveSiteContent_(body)) });
       case "assets/save": return json_({ ok: true, data: withLock_(() => saveAssets_(body)) });
       case "file/upload": return json_({ ok: true, data: withLock_(() => uploadFile_(body)) });
@@ -133,6 +142,16 @@ function mapIkesRow_(item, users) {
     }
   }
 
+  const rawAccount = item.bank_account_number || "";
+  let masked = "";
+  if (rawAccount) {
+    if (rawAccount.length > 4) {
+      masked = "******" + rawAccount.slice(-4);
+    } else {
+      masked = "****";
+    }
+  }
+
   return Object.assign({}, item, {
     amount_requested: reqAmt,
     amount_approved: appAmt,
@@ -140,7 +159,8 @@ function mapIkesRow_(item, users) {
     amount_repaid: repaid,
     outstanding_amount: outstanding !== undefined ? outstanding : (item.outstanding_amount !== undefined && item.outstanding_amount !== "" ? Number(item.outstanding_amount) : undefined),
     is_overdue: isOverdue,
-    user_name: users[item.user_id] ? users[item.user_id].full_name : item.user_id
+    user_name: users[item.user_id] ? users[item.user_id].full_name : item.user_id,
+    bank_account_masked: masked
   });
 }
 
@@ -156,7 +176,11 @@ function userListIkes_(body) {
   const users = indexBy_(rows_("tbl_users"), "user_id");
   return rows_("tbl_ikes")
     .filter((item) => String(item.user_id).toLowerCase() === user.email.toLowerCase())
-    .map((item) => mapIkesRow_(item, users))
+    .map((item) => {
+      const mapped = mapIkesRow_(item, users);
+      delete mapped.bank_account_number;
+      return mapped;
+    })
     .sort((a, b) => String(b.request_date).localeCompare(String(a.request_date)));
 }
 
@@ -255,9 +279,17 @@ function applyIkes_(body) {
     if (!body.ticket_proof || !body.ticket_proof.data) throw new Error("Ticket proof is required for iKES Go-Home.");
     ticketUrl = saveDataUrl_(body.ticket_proof, `IKES_${user.email}_${Date.now()}`, false);
   }
+
+  const intake = required_(body.intake, "intake");
+  const className = required_(body.class_name, "class_name");
+  const phoneNumber = required_(body.phone_number, "phone_number");
+  const bankAccountNumber = required_(body.bank_account_number, "bank_account_number");
+  const bankName = required_(body.bank_name, "bank_name");
+
   const application = {
     application_id: makeId_("IKES"), user_id: user.email, type: type, amount_requested: amount,
-    ticket_proof_url: ticketUrl, status: "PENDING", request_date: new Date().toISOString(), approved_by: "", notes: clean_(body.notes)
+    ticket_proof_url: ticketUrl, status: "PENDING", request_date: new Date().toISOString(), approved_by: "", notes: clean_(body.notes),
+    intake: intake, class_name: className, phone_number: phoneNumber, bank_account_number: bankAccountNumber, bank_name: bankName
   };
   appendObject_("tbl_ikes", application);
   audit_(user.email, "IKES_APPLIED", { application_id: application.application_id, type: type, amount: amount });
@@ -444,6 +476,41 @@ function saveSiteContent_(body) {
   const value = { content_key: "SITE_CONTENT", json_content: JSON.stringify(body.content), updated_at: new Date().toISOString(), updated_by: admin.email };
   upsertBy_("tbl_content", "content_key", "SITE_CONTENT", value);
   audit_(admin.email, "SITE_CONTENT_SAVED", { bytes: value.json_content.length });
+  return { updated_at: value.updated_at };
+}
+
+function getOrganisationItems_() {
+  const item = findBy_("tbl_content", "content_key", "ORGANISATION_ITEMS");
+  if (!item || !item.json_content) {
+    return [
+      { id: "org-1", type: "LEADERSHIP", title: "Bendahari Agung Kehormat", code: "BAK", member_count: 1, sort_order: 1, is_active: true },
+      { id: "org-2", type: "LEADERSHIP", title: "Naib Bendahari Agung Kehormat", code: "NBAK", member_count: 1, sort_order: 2, is_active: true },
+      { id: "org-3", type: "UNIT", title: "Unit Perancangan & Kesatuan", code: "U-PERK", member_count: 1, sort_order: 3, is_active: true },
+      { id: "org-4", type: "UNIT", title: "Unit Data & Operasi", code: "U-DOPE", member_count: 2, sort_order: 4, is_active: true },
+      { id: "org-5", type: "UNIT", title: "Unit Aset & Inventori", code: "U-SAVE", member_count: 2, sort_order: 5, is_active: true }
+    ];
+  }
+  try { return JSON.parse(item.json_content); } catch (error) { throw new Error("Stored organisation content is invalid JSON."); }
+}
+
+function saveOrganisationItems_(body) {
+  const admin = requireAdmin_(body.idToken);
+  const items = Array.isArray(body.items) ? body.items : [];
+  const codes = {};
+  items.forEach((item) => {
+    if (!item.title) throw new Error("Title is required for all items.");
+    const count = Number(item.member_count);
+    if (isNaN(count) || count <= 0 || !Number.isInteger(count)) throw new Error("Member count must be a positive whole number.");
+    const code = (item.code || "").trim();
+    if (code) {
+      if (codes[code]) throw new Error(`Duplicate non-empty code: ${code}`);
+      codes[code] = true;
+    }
+  });
+
+  const value = { content_key: "ORGANISATION_ITEMS", json_content: JSON.stringify(items), updated_at: new Date().toISOString(), updated_by: admin.email };
+  upsertBy_("tbl_content", "content_key", "ORGANISATION_ITEMS", value);
+  audit_(admin.email, "ORGANISATION_SAVED", { count: items.length });
   return { updated_at: value.updated_at };
 }
 
