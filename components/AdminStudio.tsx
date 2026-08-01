@@ -13,7 +13,7 @@ import { useContent } from "@/components/ContentProvider";
 import { apiGet, apiPost, isDemoMode } from "@/lib/api";
 import { demoStore } from "@/lib/demo-store";
 import { formatDate, money, uid } from "@/lib/format";
-import type { Announcement, Asset, IkesApplication, Loan, LocalizedText, MenuItem, Officer, SiteContent, TabungRecord } from "@/lib/types";
+import type { Announcement, Asset, IkesApplication, Loan, LocalizedText, MenuItem, Officer, SiteContent, TabungRecord, OrgItem } from "@/lib/types";
 
 type Tab = "overview" | "content" | "assets" | "ikes" | "tabung" | "announcements" | "organisation";
 type Flash = { type: "success" | "error"; text: string } | null;
@@ -45,6 +45,23 @@ export function AdminStudio() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [flash, setFlash] = useState<Flash>(null);
   const [busy, setBusy] = useState(false);
+
+  const [organisationItems, setOrganisationItems] = useState<OrgItem[]>([]);
+
+  const loadOrgItems = useCallback(async () => {
+    try {
+      if (isDemoMode) {
+        setOrganisationItems(demoStore.getOrganisationItems());
+      } else {
+        const res = await apiGet<OrgItem[]>("organisation/get");
+        if (res.ok && res.data) {
+          setOrganisationItems(res.data);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load organization items", e);
+    }
+  }, []);
 
   const loadData = useCallback(async () => {
     if (isDemoMode) {
@@ -80,6 +97,12 @@ export function AdminStudio() {
   }, [user]);
 
   useEffect(() => { if (session?.role === "ADMIN") void loadData(); }, [session, loadData]);
+
+  useEffect(() => {
+    if (session?.role === "ADMIN") {
+      void loadOrgItems();
+    }
+  }, [session, loadOrgItems]);
 
   const run = async (operation: () => Promise<void>, success: string) => {
     setBusy(true); setFlash(null);
@@ -304,6 +327,36 @@ export function AdminStudio() {
     else if (user) await apiPost("announcements/saveAll", { idToken: user.idToken, announcements });
   }, language === "bm" ? "Pengumuman disimpan." : "Announcements saved.");
 
+  const saveOrgItems = async (itemsToSave: OrgItem[]) => {
+    return run(async () => {
+      // Validate unique codes
+      const codes = new Set<string>();
+      for (const item of itemsToSave) {
+        if (!item.title.trim()) {
+          throw new Error("Title is required for all items.");
+        }
+        if (isNaN(item.member_count) || item.member_count <= 0 || !Number.isInteger(item.member_count)) {
+          throw new Error("Member count must be a positive whole number.");
+        }
+        const code = item.code.trim();
+        if (code) {
+          if (codes.has(code)) {
+            throw new Error(`Duplicate non-empty code: ${code}`);
+          }
+          codes.add(code);
+        }
+      }
+
+      if (isDemoMode) {
+        demoStore.saveOrganisationItems(itemsToSave);
+        setOrganisationItems(itemsToSave);
+      } else if (user) {
+        await apiPost("organisation/saveAll", { idToken: user.idToken, items: itemsToSave });
+        await loadOrgItems();
+      }
+    }, language === "bm" ? "Kandungan organisasi berjaya disimpan." : "Organisation content saved.");
+  };
+
   if (!user || !session) return <div className="admin-login"><div className="admin-login__panel"><Image src="/lfx-mark.svg" alt="LFX" width={90} height={90}/><span className="eyebrow">LFX Secure Access</span><h1>Content & Operations Studio</h1><p>{language === "bm" ? "Log masuk menggunakan akaun Google kampus yang disenaraikan sebagai ADMIN dalam tbl_users." : "Sign in using a campus Google account listed as ADMIN in tbl_users."}</p><GoogleAuth onUser={setUser}/>{checking && <p className="muted">Verifying role…</p>}<FlashMessage flash={flash}/></div></div>;
 
   const tabs: Array<{ id: Tab; icon: string; bm: string; en: string }> = [
@@ -325,7 +378,7 @@ export function AdminStudio() {
       {tab === "ikes" && <IkesAdmin applications={ikes} onStatus={ikesDecision} onRepay={ikesRepayment} busy={busy}/>}
       {tab === "tabung" && <TabungAdmin records={tabung} onCreate={saveTabungRecord} busy={busy}/>} 
       {tab === "announcements" && <AnnouncementAdmin items={announcements} setItems={setAnnouncements} onSave={saveAnnouncements} busy={busy}/>} 
-      {tab === "organisation" && <OrganisationEditor content={content} setContent={setContent} onSave={saveContent} busy={busy}/>} 
+      {tab === "organisation" && <OrganisationEditor items={organisationItems} setItems={setOrganisationItems} onSave={saveOrgItems} busy={busy}/>}
     </main>
   </div>;
 }
@@ -396,6 +449,8 @@ function IkesAdmin({
   onRepay: (id: string) => void;
   busy: boolean;
 }) {
+  const [selectedApp, setSelectedApp] = useState<IkesApplication | null>(null);
+
   return (
     <section className="admin-card">
       <div className="admin-card__heading">
@@ -416,10 +471,26 @@ function IkesAdmin({
           .map((item) => {
             const hasRepaymentInfo = ["APPROVED", "PAID", "REPAID"].includes(item.status);
             return (
-              <div className="data-table__row" key={item.application_id}>
+              <div className="data-table__row" key={item.application_id} style={{ position: "relative" }}>
                 <span>
-                  <strong>{item.user_name || item.user_id}</strong>
-                  <small>
+                  <button
+                    onClick={() => setSelectedApp(item)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "inherit",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      padding: 0,
+                      display: "block",
+                      width: "100%"
+                    }}
+                  >
+                    <strong style={{ textDecoration: "underline", color: "#0d4d41" }}>
+                      {item.user_name || item.user_id}
+                    </strong>
+                  </button>
+                  <small style={{ display: "block", marginTop: "4px" }}>
                     {item.application_id} · {formatDate(item.request_date)}
                   </small>
                 </span>
@@ -440,24 +511,31 @@ function IkesAdmin({
                   <small style={{ display: "block", marginBottom: "4px" }}>
                     {item.notes || "—"}
                   </small>
-                  {item.ticket_proof_url && (
-                    <a
-                      className="text-link"
-                      href={item.ticket_proof_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ display: "inline-block", marginBottom: "4px" }}
-                    >
-                      View proof
-                    </a>
-                  )}
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                    {item.ticket_proof_url && (
+                      <a
+                        className="text-link"
+                        href={item.ticket_proof_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ fontSize: "0.8rem" }}
+                      >
+                        View proof
+                      </a>
+                    )}
+                    {item.bank_name && item.bank_account_masked && (
+                      <span style={{ fontSize: "0.78rem", background: "#f0fdf4", color: "#166534", padding: "2px 6px", borderRadius: "4px" }}>
+                        {item.bank_name} ({item.bank_account_masked})
+                      </span>
+                    )}
+                  </div>
                   {item.rejection_reason && (
-                    <div style={{ color: "#913737", fontSize: "0.8rem", fontWeight: 600 }}>
+                    <div style={{ color: "#913737", fontSize: "0.8rem", fontWeight: 600, marginTop: "4px" }}>
                       Rejected: {item.rejection_reason}
                     </div>
                   )}
                   {hasRepaymentInfo && (
-                    <div style={{ fontSize: "0.8rem", color: "var(--muted)", borderTop: "1px dashed var(--line)", paddingTop: "4px" }}>
+                    <div style={{ fontSize: "0.8rem", color: "var(--muted)", borderTop: "1px dashed var(--line)", paddingTop: "4px", marginTop: "4px" }}>
                       {item.decision_date && <div>Decided: {formatDate(item.decision_date)}</div>}
                       {item.payment_date && <div>Paid out: {formatDate(item.payment_date)}</div>}
                       {item.repayment_due_date && <div>Due date: {formatDate(item.repayment_due_date)}</div>}
@@ -529,6 +607,124 @@ function IkesAdmin({
             );
           })}
       </div>
+
+      {selectedApp && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 1000,
+          padding: "16px"
+        }}>
+          <div style={{
+            backgroundColor: "var(--bg)",
+            color: "var(--text)",
+            borderRadius: "8px",
+            width: "100%",
+            maxWidth: "600px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            padding: "24px",
+            maxHeight: "90vh",
+            overflowY: "auto",
+            border: "1px solid var(--line)"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--line)", paddingBottom: "12px", marginBottom: "16px" }}>
+              <h3 style={{ margin: 0 }}>Application Details — {selectedApp.application_id}</h3>
+              <button
+                onClick={() => setSelectedApp(null)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--muted)",
+                  padding: "4px"
+                }}
+              >
+                <Icon name="close" size={20} />
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", fontSize: "0.9rem" }}>
+              <div>
+                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Applicant Name</span>
+                <strong>{selectedApp.user_name || "—"}</strong>
+              </div>
+              <div>
+                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Email Address</span>
+                <strong>{selectedApp.user_id}</strong>
+              </div>
+              <div>
+                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Intake</span>
+                <strong>{selectedApp.intake || "—"}</strong>
+              </div>
+              <div>
+                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Class</span>
+                <strong>{selectedApp.class_name || "—"}</strong>
+              </div>
+              <div>
+                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Phone Number</span>
+                <strong>{selectedApp.phone_number || "—"}</strong>
+              </div>
+              <div>
+                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Bank Name</span>
+                <strong>{selectedApp.bank_name || "—"}</strong>
+              </div>
+              <div style={{ gridColumn: "span 2" }}>
+                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Full Bank Account Number</span>
+                <strong style={{ fontSize: "1.1rem", color: "#0d4d41" }}>
+                  {selectedApp.bank_account_number || selectedApp.bank_account_masked || "—"}
+                </strong>
+              </div>
+              <div>
+                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Requested Amount</span>
+                <strong>{money(selectedApp.amount_requested)}</strong>
+              </div>
+              <div>
+                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Approved Amount</span>
+                <strong>{selectedApp.amount_approved !== undefined ? money(selectedApp.amount_approved) : "—"}</strong>
+              </div>
+              <div>
+                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Status</span>
+                <div style={{ marginTop: "4px" }}><StatusBadge status={selectedApp.status} /></div>
+              </div>
+              <div>
+                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Request Date</span>
+                <strong>{formatDate(selectedApp.request_date)}</strong>
+              </div>
+              {selectedApp.notes && (
+                <div style={{ gridColumn: "span 2" }}>
+                  <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Notes</span>
+                  <div style={{ marginTop: "4px", background: "var(--soft-bg)", padding: "8px", borderRadius: "4px" }}>
+                    {selectedApp.notes}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: "24px", display: "flex", justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setSelectedApp(null)}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "var(--line)",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontWeight: "bold"
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -543,8 +739,204 @@ function AnnouncementAdmin({ items, setItems, onSave, busy }: { items: Announcem
   return <section className="admin-card"><div className="admin-card__heading"><div><h2>Announcement Centre</h2><p>Create bilingual notices, categories and PDF links.</p></div><button className="button button--small button--outline" onClick={add}><Icon name="plus" size={16}/>New announcement</button></div><div className="announcement-editor">{items.map((item,index) => <article key={item.announcement_id}><div className="page-editor-list__top"><strong>{item.announcement_id}</strong><button className="danger-icon" onClick={() => setItems(items.filter((_,i) => i !== index))}><Icon name="trash" size={17}/></button></div><LocalizedInputs label="Title" value={item.title} onChange={(title) => { const next=[...items]; next[index]={...item,title}; setItems(next); }}/><LocalizedInputs label="Content" multiline value={item.content} onChange={(content) => { const next=[...items]; next[index]={...item,content}; setItems(next); }}/><div className="form-grid"><label><span>Category</span><input value={item.category} onChange={(e) => { const next=[...items]; next[index]={...item,category:e.target.value}; setItems(next); }}/></label><label><span>Publish date</span><input type="date" value={item.publish_date} onChange={(e) => { const next=[...items]; next[index]={...item,publish_date:e.target.value}; setItems(next); }}/></label><label><span>Attachment URL</span><input value={item.attachment_url} onChange={(e) => { const next=[...items]; next[index]={...item,attachment_url:e.target.value}; setItems(next); }}/></label><label><span>Responsible officer</span><input value={item.responsible_officer || ""} onChange={(e) => { const next=[...items]; next[index]={...item,responsible_officer:e.target.value}; setItems(next); }}/></label></div></article>)}</div><div className="admin-card__footer"><button disabled={busy} className="button" onClick={onSave}><Icon name="save" size={17}/>Save announcements</button></div></section>;
 }
 
-function OrganisationEditor({ content, setContent, onSave, busy }: { content: SiteContent; setContent: (content: SiteContent) => void; onSave: () => void; busy: boolean }) {
-  const add = () => setContent({ ...content, organisation: [...content.organisation, { id: uid("officer"), name: "New officer", position: { bm: "Jawatan", en: "Position" }, portfolio: { bm: "Portfolio", en: "Portfolio" }, email: "", responsibilities: { bm: "", en: "" }, photoUrl: "/officer-placeholder.svg", level: 2 }] });
-  const update = (index: number, patch: Partial<Officer>) => { const organisation=[...content.organisation]; organisation[index]={...organisation[index],...patch}; setContent({...content,organisation}); };
-  return <section className="admin-card"><div className="admin-card__heading"><div><h2>Organisation chart</h2><p>Level 1 appears above level 2, and so forth.</p></div><button className="button button--small button--outline" onClick={add}><Icon name="plus" size={16}/>Add officer</button></div><div className="organisation-editor">{content.organisation.map((officer,index) => <article key={officer.id}><CmsImage src={officer.photoUrl || "/officer-placeholder.svg"} alt="" width={84} height={84}/><div><div className="form-grid"><label><span>Name</span><input value={officer.name} onChange={(e) => update(index,{name:e.target.value})}/></label><label><span>Email</span><input type="email" value={officer.email} onChange={(e) => update(index,{email:e.target.value})}/></label><label><span>Photo URL</span><input value={officer.photoUrl} onChange={(e) => update(index,{photoUrl:e.target.value})}/></label><label><span>Chart level</span><input type="number" min="1" value={officer.level} onChange={(e) => update(index,{level:Number(e.target.value)})}/></label></div><LocalizedInputs label="Position" value={officer.position} onChange={(position)=>update(index,{position})}/><LocalizedInputs label="Portfolio" value={officer.portfolio} onChange={(portfolio)=>update(index,{portfolio})}/><LocalizedInputs label="Responsibilities" multiline value={officer.responsibilities} onChange={(responsibilities)=>update(index,{responsibilities})}/></div><button className="danger-icon" onClick={() => setContent({...content,organisation:content.organisation.filter((_,i)=>i!==index)})}><Icon name="trash" size={17}/></button></article>)}</div><div className="admin-card__footer"><button disabled={busy} className="button" onClick={onSave}><Icon name="save" size={17}/>Save organisation</button></div></section>;
+function OrganisationEditor({
+  items,
+  setItems,
+  onSave,
+  busy
+}: {
+  items: OrgItem[];
+  setItems: (items: OrgItem[]) => void;
+  onSave: (items: OrgItem[]) => Promise<void>;
+  busy: boolean;
+}) {
+  const add = () => {
+    const nextSortOrder = items.length > 0 ? Math.max(...items.map(i => i.sort_order)) + 1 : 1;
+    setItems([
+      ...items,
+      {
+        id: uid("org"),
+        type: "UNIT",
+        title: "New Item",
+        code: "",
+        member_count: 1,
+        sort_order: nextSortOrder,
+        is_active: true
+      }
+    ]);
+  };
+
+  const update = (index: number, patch: Partial<OrgItem>) => {
+    const next = [...items];
+    next[index] = { ...next[index], ...patch };
+    setItems(next);
+  };
+
+  const remove = (index: number) => {
+    const item = items[index];
+    const confirm = window.confirm(`Are you sure you want to remove "${item.title || "this item"}"?`);
+    if (confirm) {
+      setItems(items.filter((_, i) => i !== index));
+    }
+  };
+
+  const move = (index: number, direction: "up" | "down") => {
+    if (direction === "up" && index === 0) return;
+    if (direction === "down" && index === items.length - 1) return;
+
+    const next = [...items];
+    const swapWith = direction === "up" ? index - 1 : index + 1;
+
+    // Swap sort_order values
+    const tempOrder = next[index].sort_order;
+    next[index].sort_order = next[swapWith].sort_order;
+    next[swapWith].sort_order = tempOrder;
+
+    // Swap positions in array
+    const temp = next[index];
+    next[index] = next[swapWith];
+    next[swapWith] = temp;
+
+    setItems(next);
+  };
+
+  return (
+    <section className="admin-card">
+      <div className="admin-card__heading">
+        <div>
+          <h2>Organisation Chart & Units</h2>
+          <p>Add, edit, reorder, activate/deactivate, or remove leadership and unit items.</p>
+        </div>
+        <button className="button button--small button--outline" onClick={add}>
+          <Icon name="plus" size={16} /> Add Item
+        </button>
+      </div>
+
+      <div className="organisation-editor" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        {items
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map((item, index) => (
+            <article
+              key={item.id}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+                padding: "16px",
+                border: "1px solid var(--line)",
+                borderRadius: "8px",
+                background: item.is_active ? "var(--bg)" : "var(--soft-bg)",
+                opacity: item.is_active ? 1 : 0.7,
+                position: "relative"
+              }}
+            >
+              <div style={{ display: "flex", gap: "12px", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button
+                    disabled={index === 0}
+                    onClick={() => move(index, "up")}
+                    className="button button--small button--outline"
+                    style={{ padding: "4px 8px" }}
+                  >
+                    ▲
+                  </button>
+                  <button
+                    disabled={index === items.length - 1}
+                    onClick={() => move(index, "down")}
+                    className="button button--small button--outline"
+                    style={{ padding: "4px 8px" }}
+                  >
+                    ▼
+                  </button>
+                </div>
+
+                <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                  <label className="check-field" style={{ margin: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={item.is_active}
+                      onChange={(e) => update(index, { is_active: e.target.checked })}
+                    />
+                    <span>Active</span>
+                  </label>
+                  <button
+                    className="danger-icon"
+                    onClick={() => remove(index)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "red",
+                      cursor: "pointer",
+                      padding: "4px"
+                    }}
+                  >
+                    <Icon name="trash" size={18} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <label>
+                  <span>Type</span>
+                  <select
+                    value={item.type}
+                    onChange={(e) => update(index, { type: e.target.value as "LEADERSHIP" | "UNIT" })}
+                  >
+                    <option value="LEADERSHIP">LEADERSHIP</option>
+                    <option value="UNIT">UNIT</option>
+                  </select>
+                </label>
+
+                <label>
+                  <span>Code</span>
+                  <input
+                    type="text"
+                    placeholder="e.g. BAK, U-DOPE"
+                    value={item.code}
+                    onChange={(e) => update(index, { code: e.target.value })}
+                  />
+                </label>
+
+                <label style={{ gridColumn: "span 2" }}>
+                  <span>Title</span>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Bendahari Agung Kehormat"
+                    value={item.title}
+                    onChange={(e) => update(index, { title: e.target.value })}
+                  />
+                </label>
+
+                <label>
+                  <span>Member Count</span>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={item.member_count}
+                    onChange={(e) => update(index, { member_count: parseInt(e.target.value, 10) || 1 })}
+                  />
+                </label>
+
+                <label>
+                  <span>Sort Order</span>
+                  <input
+                    type="number"
+                    value={item.sort_order}
+                    onChange={(e) => update(index, { sort_order: parseInt(e.target.value, 10) || 1 })}
+                  />
+                </label>
+              </div>
+            </article>
+          ))}
+      </div>
+
+      <div className="admin-card__footer" style={{ marginTop: "24px", paddingTop: "16px", borderTop: "1px solid var(--line)" }}>
+        <button disabled={busy} className="button" onClick={() => onSave(items)}>
+          <Icon name="save" size={17} /> Save organisation
+        </button>
+      </div>
+    </section>
+  );
 }

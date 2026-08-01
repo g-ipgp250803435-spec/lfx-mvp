@@ -2,7 +2,7 @@
 
 import { fallbackContent } from "@/lib/content";
 import { mockAnnouncements, mockAssets, mockIkes, mockLoans, mockTabung } from "@/data/mock";
-import type { Announcement, Asset, IkesApplication, Loan, SiteContent, TabungRecord } from "@/lib/types";
+import type { Announcement, Asset, IkesApplication, Loan, SiteContent, TabungRecord, OrgItem } from "@/lib/types";
 
 const keys = {
   content: "lfx-demo-content",
@@ -10,8 +10,17 @@ const keys = {
   loans: "lfx-demo-loans",
   ikes: "lfx-demo-ikes",
   tabung: "lfx-demo-tabung",
-  announcements: "lfx-demo-announcements"
+  announcements: "lfx-demo-announcements",
+  organisationItems: "lfx-demo-organisation-items"
 };
+
+export const defaultOrgItems: OrgItem[] = [
+  { id: "org-1", type: "LEADERSHIP", title: "Bendahari Agung Kehormat", code: "BAK", member_count: 1, sort_order: 1, is_active: true },
+  { id: "org-2", type: "LEADERSHIP", title: "Naib Bendahari Agung Kehormat", code: "NBAK", member_count: 1, sort_order: 2, is_active: true },
+  { id: "org-3", type: "UNIT", title: "Unit Perancangan & Kesatuan", code: "U-PERK", member_count: 1, sort_order: 3, is_active: true },
+  { id: "org-4", type: "UNIT", title: "Unit Data & Operasi", code: "U-DOPE", member_count: 2, sort_order: 4, is_active: true },
+  { id: "org-5", type: "UNIT", title: "Unit Aset & Inventori", code: "U-SAVE", member_count: 2, sort_order: 5, is_active: true }
+];
 
 function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -39,5 +48,7 @@ export const demoStore = {
   saveTabung: (value: TabungRecord[]) => write(keys.tabung, value),
   getAnnouncements: () => read<Announcement[]>(keys.announcements, mockAnnouncements),
   saveAnnouncements: (value: Announcement[]) => write(keys.announcements, value),
+  getOrganisationItems: () => read<OrgItem[]>(keys.organisationItems, defaultOrgItems),
+  saveOrganisationItems: (value: OrgItem[]) => write(keys.organisationItems, value),
   reset: () => Object.values(keys).forEach((key) => localStorage.removeItem(key))
 };

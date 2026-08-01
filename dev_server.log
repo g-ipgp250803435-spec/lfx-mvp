@@ -1,0 +1,12 @@
+
+> legasi-finance-x@1.0.0 dev
+> next dev
+
+▲ Next.js 16.2.12 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+✓ Ready in 926ms
+
+ HEAD / 200 in 2.7s (next.js: 2.4s, application-code: 303ms)
+ GET /organisation 200 in 744ms (next.js: 622ms, application-code: 122ms)
+ GET /ikes 200 in 647ms (next.js: 549ms, application-code: 98ms)

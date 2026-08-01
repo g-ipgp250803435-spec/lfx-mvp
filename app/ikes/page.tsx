@@ -207,6 +207,25 @@ export default function IkesPage() {
                             </div>
 
                             <div className="student-ikes-card__item">
+                              <span>{language === "bm" ? "Kemasukan" : "Intake"}</span>
+                              <strong>{app.intake || "—"}</strong>
+                            </div>
+
+                            <div className="student-ikes-card__item">
+                              <span>{language === "bm" ? "Kelas" : "Class"}</span>
+                              <strong>{app.class_name || "—"}</strong>
+                            </div>
+
+                            <div className="student-ikes-card__item">
+                              <span>{language === "bm" ? "Akaun Bank" : "Bank Account"}</span>
+                              <strong>
+                                {app.bank_name && app.bank_account_masked
+                                  ? `${app.bank_name} (${app.bank_account_masked})`
+                                  : "—"}
+                              </strong>
+                            </div>
+
+                            <div className="student-ikes-card__item">
                               <span>{language === "bm" ? "Tarikh Mohon" : "Request Date"}</span>
                               <strong>{formatDate(app.request_date)}</strong>
                             </div>
