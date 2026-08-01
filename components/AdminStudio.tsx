@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { CmsImage } from "@/components/CmsImage";
 import { GoogleAuth, type SignedInUser } from "@/components/GoogleAuth";
@@ -134,14 +135,161 @@ export function AdminStudio() {
   }, language === "bm" ? "Status pinjaman dikemas kini." : "Loan status updated.");
 
   const ikesDecision = (applicationId: string, status: IkesApplication["status"]) => {
-    const reason = status === "REJECTED" ? window.prompt("Reason for rejection (required):") : "";
-    if (status === "REJECTED" && (!reason || !reason.trim())) { if (reason !== null) setFlash({ type: "error", text: "A rejection reason is required." }); return; }
+    const item = ikes.find((a) => a.application_id === applicationId);
+    if (!item) return;
+
+    let reason = "";
+    let amountApproved = 0;
+    let repaymentTermDays = 0;
+    let paymentDate = "";
+
+    if (status === "REJECTED") {
+      const promptReason = window.prompt("Reason for rejection (required):");
+      if (promptReason === null) return;
+      reason = promptReason.trim();
+      if (!reason) {
+        setFlash({ type: "error", text: "A rejection reason is required." });
+        return;
+      }
+    } else if (status === "APPROVED") {
+      const amtStr = window.prompt("Enter approved amount (RM):", String(item.amount_requested));
+      if (amtStr === null) return;
+      amountApproved = Number(amtStr);
+      if (isNaN(amountApproved) || amountApproved <= 0) {
+        setFlash({ type: "error", text: "Approved amount must be a positive number." });
+        return;
+      }
+      const termStr = window.prompt("Enter repayment term in days:", "3");
+      if (termStr === null) return;
+      repaymentTermDays = parseInt(termStr, 10);
+      if (isNaN(repaymentTermDays) || repaymentTermDays <= 0) {
+        setFlash({ type: "error", text: "Repayment term must be a positive integer." });
+        return;
+      }
+    } else if (status === "PAID") {
+      const defaultDate = new Date().toISOString().slice(0, 10);
+      const dateStr = window.prompt("Enter payment date (YYYY-MM-DD):", defaultDate);
+      if (dateStr === null) return;
+      paymentDate = dateStr.trim();
+      if (!paymentDate) {
+        setFlash({ type: "error", text: "Payment date is required." });
+        return;
+      }
+    }
+
     return run(async () => {
       if (isDemoMode) {
-        const next = ikes.map((item) => item.application_id === applicationId ? { ...item, status, approved_by: user?.email || "demo.admin@ipg.edu.my", notes: reason ? `${item.notes}${item.notes ? " | " : ""}Admin: ${reason}` : item.notes } : item);
-        setIkes(next); demoStore.saveIkes(next);
-      } else if (user) { await apiPost(status === "APPROVED" || status === "REJECTED" ? "ikes/approve" : "ikes/status", { idToken: user.idToken, application_id: applicationId, decision: status, status, reason: reason || "" }); await loadData(); }
+        const next = ikes.map((app) => {
+          if (app.application_id === applicationId) {
+            const patch: Partial<IkesApplication> = {
+              status,
+              approved_by: user?.email || "demo.admin@ipg.edu.my"
+            };
+            if (status === "APPROVED") {
+              patch.amount_approved = amountApproved;
+              patch.repayment_term_days = repaymentTermDays;
+              patch.outstanding_amount = amountApproved;
+              patch.amount_repaid = 0;
+              patch.decision_date = new Date().toISOString().slice(0, 10);
+            } else if (status === "REJECTED") {
+              patch.rejection_reason = reason;
+              patch.notes = reason ? `${app.notes || ""}${app.notes ? " | " : ""}Admin: ${reason}` : app.notes;
+            } else if (status === "PAID") {
+              patch.payment_date = paymentDate;
+              const termDays = app.repayment_term_days || 0;
+              if (termDays > 0) {
+                const pDate = new Date(paymentDate);
+                pDate.setDate(pDate.getDate() + termDays);
+                patch.repayment_due_date = pDate.toISOString().slice(0, 10);
+              }
+              patch.amount_repaid = app.amount_repaid || 0;
+              patch.outstanding_amount = Math.max(0, (app.amount_approved || 0) - (patch.amount_repaid || 0));
+            } else if (status === "REPAID") {
+              patch.amount_repaid = app.amount_approved || 0;
+              patch.outstanding_amount = 0;
+            }
+            return { ...app, ...patch } as IkesApplication;
+          }
+          return app;
+        });
+        setIkes(next);
+        demoStore.saveIkes(next);
+      } else if (user) {
+        if (status === "APPROVED") {
+          await apiPost("ikes/approve", {
+            idToken: user.idToken,
+            application_id: applicationId,
+            decision: "APPROVED",
+            amount_approved: amountApproved,
+            repayment_term_days: repaymentTermDays
+          });
+        } else if (status === "REJECTED") {
+          await apiPost("ikes/approve", {
+            idToken: user.idToken,
+            application_id: applicationId,
+            decision: "REJECTED",
+            reason
+          });
+        } else if (status === "PAID") {
+          await apiPost("ikes/status", {
+            idToken: user.idToken,
+            application_id: applicationId,
+            status: "PAID",
+            payment_date: paymentDate
+          });
+        } else {
+          await apiPost("ikes/status", {
+            idToken: user.idToken,
+            application_id: applicationId,
+            status: "REPAID"
+          });
+        }
+        await loadData();
+      }
     }, `iKES status changed to ${status}.`);
+  };
+
+  const ikesRepayment = (applicationId: string) => {
+    const amtStr = window.prompt("Enter repayment amount (RM):");
+    if (amtStr === null) return;
+    const amt = Number(amtStr);
+    if (isNaN(amt) || amt <= 0) {
+      setFlash({ type: "error", text: "Invalid repayment amount." });
+      return;
+    }
+    const dateStr = window.prompt("Enter repayment date (YYYY-MM-DD, optional):", new Date().toISOString().slice(0, 10));
+    if (dateStr === null) return;
+
+    return run(async () => {
+      if (isDemoMode) {
+        const next = ikes.map((item) => {
+          if (item.application_id === applicationId) {
+            const currentRepaid = item.amount_repaid || 0;
+            const approved = item.amount_approved || 0;
+            const newRepaid = currentRepaid + amt;
+            const newOutstanding = Math.max(0, approved - newRepaid);
+            const status = newOutstanding <= 0 ? "REPAID" : "PAID";
+            return {
+              ...item,
+              status,
+              amount_repaid: newRepaid,
+              outstanding_amount: newOutstanding
+            } as IkesApplication;
+          }
+          return item;
+        });
+        setIkes(next);
+        demoStore.saveIkes(next);
+      } else if (user) {
+        await apiPost("ikes/repayment", {
+          idToken: user.idToken,
+          application_id: applicationId,
+          amount: amt,
+          repayment_date: dateStr.trim() || undefined
+        });
+        await loadData();
+      }
+    }, `Repayment of RM${amt.toFixed(2)} recorded.`);
   };
 
   const saveTabungRecord = (record: Omit<TabungRecord, "record_id" | "recorded_by">) => run(async () => {
@@ -169,12 +317,12 @@ export function AdminStudio() {
   ];
 
   return <div className="admin-shell">
-    <aside className="admin-sidebar"><div className="admin-brand"><Image src="/lfx-mark.svg" alt="LFX" width={52} height={52}/><span><strong>LFX Studio</strong><small>{session.email}</small></span></div><nav>{tabs.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => { setTab(item.id); setFlash(null); }}><Icon name={item.icon}/>{language === "bm" ? item.bm : item.en}</button>)}</nav><a href="/" className="admin-back"><Icon name="arrow" size={17}/>{language === "bm" ? "Lihat portal" : "View portal"}</a></aside>
+    <aside className="admin-sidebar"><div className="admin-brand"><Image src="/lfx-mark.svg" alt="LFX" width={52} height={52}/><span><strong>LFX Studio</strong><small>{session.email}</small></span></div><nav>{tabs.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => { setTab(item.id); setFlash(null); }}><Icon name={item.icon}/>{language === "bm" ? item.bm : item.en}</button>)}</nav><Link href="/" className="admin-back"><Icon name="arrow" size={17}/>{language === "bm" ? "Lihat portal" : "View portal"}</Link></aside>
     <main className="admin-main"><header className="admin-topbar"><div><span className="eyebrow">Office Operating System</span><h1>{tabs.find((item) => item.id === tab)?.[language]}</h1></div><span className="mode-pill">{isDemoMode ? "DEMO" : "LIVE"}</span></header><FlashMessage flash={flash}/>
       {tab === "overview" && <Overview assets={assets} loans={loans} ikes={ikes} tabung={tabung}/>} 
       {tab === "content" && <ContentEditor content={content} setContent={setContent} onSave={saveContent} onUpload={uploadMedia} busy={busy}/>} 
       {tab === "assets" && <AssetAdmin assets={assets} setAssets={setAssets} loans={loans} onSave={saveAssets} onDecision={loanDecision} onScan={scanLoan} busy={busy}/>} 
-      {tab === "ikes" && <IkesAdmin applications={ikes} onStatus={ikesDecision} busy={busy}/>} 
+      {tab === "ikes" && <IkesAdmin applications={ikes} onStatus={ikesDecision} onRepay={ikesRepayment} busy={busy}/>}
       {tab === "tabung" && <TabungAdmin records={tabung} onCreate={saveTabungRecord} busy={busy}/>} 
       {tab === "announcements" && <AnnouncementAdmin items={announcements} setItems={setAnnouncements} onSave={saveAnnouncements} busy={busy}/>} 
       {tab === "organisation" && <OrganisationEditor content={content} setContent={setContent} onSave={saveContent} busy={busy}/>} 
@@ -237,8 +385,152 @@ function AssetAdmin({ assets, setAssets, loans, onSave, onDecision, onScan, busy
     <section className="admin-card"><div className="admin-card__heading"><div><h2>Asset register</h2><p>Edit status, picture URL and asset details.</p></div><button className="button button--small button--outline" onClick={addAsset}><Icon name="plus" size={16}/>Add asset</button></div><div className="asset-admin-list">{assets.map((asset, index) => <article key={asset.asset_id}><CmsImage src={asset.image_url || "/asset-placeholder.svg"} alt="" width={68} height={68}/><div className="asset-admin-fields"><input value={asset.asset_id} onChange={(e) => { const next = [...assets]; next[index] = { ...asset, asset_id: e.target.value }; setAssets(next); }}/><input value={asset.name} onChange={(e) => { const next = [...assets]; next[index] = { ...asset, name: e.target.value }; setAssets(next); }}/><input value={asset.category} onChange={(e) => { const next = [...assets]; next[index] = { ...asset, category: e.target.value }; setAssets(next); }}/><select value={asset.status} onChange={(e) => { const next = [...assets]; next[index] = { ...asset, status: e.target.value as Asset["status"] }; setAssets(next); }}><option>AVAILABLE</option><option>ON_LOAN</option><option>DAMAGED</option><option>MAINTENANCE</option></select><input className="wide" value={asset.image_url} placeholder="Image URL" onChange={(e) => { const next = [...assets]; next[index] = { ...asset, image_url: e.target.value }; setAssets(next); }}/><textarea className="wide" value={asset.description} placeholder="Description" onChange={(e) => { const next = [...assets]; next[index] = { ...asset, description: e.target.value }; setAssets(next); }}/></div><button className="danger-icon" onClick={() => setAssets(assets.filter((_, i) => i !== index))}><Icon name="trash" size={17}/></button></article>)}</div><div className="admin-card__footer"><button disabled={busy} className="button" onClick={onSave}><Icon name="save" size={17}/>Save assets</button></div></section></div>;
 }
 
-function IkesAdmin({ applications, onStatus, busy }: { applications: IkesApplication[]; onStatus: (id: string, status: IkesApplication["status"]) => void; busy: boolean }) {
-  return <section className="admin-card"><div className="admin-card__heading"><div><h2>iKES applications</h2><p>Approval records only. No bank transaction is performed by the system.</p></div></div><div className="data-table data-table--ikes"><div className="data-table__head"><span>Applicant</span><span>Application</span><span>Notes / proof</span><span>Status & action</span></div>{applications.sort((a,b) => b.request_date.localeCompare(a.request_date)).map((item) => <div className="data-table__row" key={item.application_id}><span><strong>{item.user_name || item.user_id}</strong><small>{item.application_id} · {formatDate(item.request_date)}</small></span><span><strong>{item.type} · {money(item.amount_requested)}</strong></span><span><small>{item.notes || "—"}</small>{item.ticket_proof_url && <a className="text-link" href={item.ticket_proof_url} target="_blank" rel="noreferrer">View proof</a>}</span><span><StatusBadge status={item.status}/><select disabled={busy || ["REJECTED", "REPAID"].includes(item.status)} value={item.status} onChange={(e) => onStatus(item.application_id, e.target.value as IkesApplication["status"])}>{(item.status === "PENDING" ? ["PENDING", "APPROVED", "REJECTED"] : item.status === "APPROVED" ? ["APPROVED", "PAID"] : item.status === "PAID" ? ["PAID", "REPAID"] : [item.status]).map((status) => <option key={status}>{status}</option>)}</select></span></div>)}</div></section>;
+function IkesAdmin({
+  applications,
+  onStatus,
+  onRepay,
+  busy
+}: {
+  applications: IkesApplication[];
+  onStatus: (id: string, status: IkesApplication["status"]) => void;
+  onRepay: (id: string) => void;
+  busy: boolean;
+}) {
+  return (
+    <section className="admin-card">
+      <div className="admin-card__heading">
+        <div>
+          <h2>iKES applications</h2>
+          <p>Approval records only. No bank transaction is performed by the system.</p>
+        </div>
+      </div>
+      <div className="data-table data-table--ikes">
+        <div className="data-table__head">
+          <span>Applicant</span>
+          <span>Application</span>
+          <span>Notes / proof / dates</span>
+          <span>Status & action</span>
+        </div>
+        {applications
+          .sort((a, b) => b.request_date.localeCompare(a.request_date))
+          .map((item) => {
+            const hasRepaymentInfo = ["APPROVED", "PAID", "REPAID"].includes(item.status);
+            return (
+              <div className="data-table__row" key={item.application_id}>
+                <span>
+                  <strong>{item.user_name || item.user_id}</strong>
+                  <small>
+                    {item.application_id} · {formatDate(item.request_date)}
+                  </small>
+                </span>
+                <span>
+                  <strong>
+                    {item.type} · {money(item.amount_requested)}
+                  </strong>
+                  {hasRepaymentInfo && item.amount_approved !== undefined && (
+                    <div style={{ marginTop: "4px", fontSize: "0.8rem", color: "var(--muted)" }}>
+                      <div>Approved: {money(item.amount_approved)}</div>
+                      {item.repayment_term_days !== undefined && (
+                        <div>Term: {item.repayment_term_days} days</div>
+                      )}
+                    </div>
+                  )}
+                </span>
+                <span>
+                  <small style={{ display: "block", marginBottom: "4px" }}>
+                    {item.notes || "—"}
+                  </small>
+                  {item.ticket_proof_url && (
+                    <a
+                      className="text-link"
+                      href={item.ticket_proof_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ display: "inline-block", marginBottom: "4px" }}
+                    >
+                      View proof
+                    </a>
+                  )}
+                  {item.rejection_reason && (
+                    <div style={{ color: "#913737", fontSize: "0.8rem", fontWeight: 600 }}>
+                      Rejected: {item.rejection_reason}
+                    </div>
+                  )}
+                  {hasRepaymentInfo && (
+                    <div style={{ fontSize: "0.8rem", color: "var(--muted)", borderTop: "1px dashed var(--line)", paddingTop: "4px" }}>
+                      {item.decision_date && <div>Decided: {formatDate(item.decision_date)}</div>}
+                      {item.payment_date && <div>Paid out: {formatDate(item.payment_date)}</div>}
+                      {item.repayment_due_date && <div>Due date: {formatDate(item.repayment_due_date)}</div>}
+                    </div>
+                  )}
+                </span>
+                <span>
+                  <StatusBadge status={item.status} />
+                  <select
+                    disabled={busy || ["REJECTED", "REPAID"].includes(item.status)}
+                    value={item.status}
+                    onChange={(e) => onStatus(item.application_id, e.target.value as IkesApplication["status"])}
+                    style={{ marginTop: "6px" }}
+                  >
+                    {(item.status === "PENDING"
+                      ? ["PENDING", "APPROVED", "REJECTED"]
+                      : item.status === "APPROVED"
+                      ? ["APPROVED", "PAID"]
+                      : item.status === "PAID"
+                      ? ["PAID", "REPAID"]
+                      : [item.status]
+                    ).map((status) => (
+                      <option key={status}>{status}</option>
+                    ))}
+                  </select>
+
+                  {item.status === "PAID" && (
+                    <div style={{ marginTop: "8px", width: "100%" }}>
+                      <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginBottom: "4px" }}>
+                        <div>Repaid: {money(item.amount_repaid || 0)}</div>
+                        <div>Outstanding: {money(item.outstanding_amount ?? (item.amount_approved ?? 0))}</div>
+                      </div>
+                      <button
+                        disabled={busy}
+                        className="button button--small button--outline"
+                        style={{ padding: "4px 8px", fontSize: "0.78rem", width: "100%", justifyContent: "center" }}
+                        onClick={() => onRepay(item.application_id)}
+                      >
+                        <Icon name="plus" size={12} style={{ marginRight: "4px" }} /> Record Repayment
+                      </button>
+                    </div>
+                  )}
+
+                  {item.status === "REPAID" && item.amount_repaid !== undefined && (
+                    <div style={{ marginTop: "4px", fontSize: "0.78rem", color: "var(--muted)" }}>
+                      <div>Fully repaid: {money(item.amount_repaid)}</div>
+                    </div>
+                  )}
+
+                  {item.is_overdue && (
+                    <div
+                      style={{
+                        marginTop: "8px",
+                        color: "#913737",
+                        fontSize: "0.78rem",
+                        fontWeight: "bold",
+                        background: "rgba(145, 55, 55, 0.08)",
+                        padding: "4px 8px",
+                        borderRadius: "4px",
+                        width: "100%",
+                        textAlign: "center"
+                      }}
+                    >
+                      OVERDUE WARNING
+                    </div>
+                  )}
+                </span>
+              </div>
+            );
+          })}
+      </div>
+    </section>
+  );
 }
 
 function TabungAdmin({ records, onCreate, busy }: { records: TabungRecord[]; onCreate: (record: Omit<TabungRecord, "record_id" | "recorded_by">) => void; busy: boolean }) {
