@@ -134,6 +134,15 @@ export type IkesApplication = {
   request_date: string;
   approved_by: string;
   notes: string;
+  amount_approved?: number;
+  repayment_term_days?: number;
+  decision_date?: string;
+  payment_date?: string;
+  repayment_due_date?: string;
+  amount_repaid?: number;
+  outstanding_amount?: number;
+  is_overdue?: boolean;
+  rejection_reason?: string;
 };
 
 export type TabungRecord = {

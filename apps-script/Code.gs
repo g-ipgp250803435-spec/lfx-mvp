@@ -10,7 +10,7 @@ const TABLES = {
   users: ["user_id", "full_name", "role", "is_active"],
   assets: ["asset_id", "name", "category", "image_url", "status", "description"],
   loans: ["loan_id", "asset_id", "user_id", "purpose", "request_date", "approved_by", "status", "qr_code_url", "date_borrowed", "date_returned_expected", "date_returned_actual"],
-  ikes: ["application_id", "user_id", "type", "amount_requested", "ticket_proof_url", "status", "request_date", "approved_by", "notes"],
+  ikes: ["application_id", "user_id", "type", "amount_requested", "ticket_proof_url", "status", "request_date", "approved_by", "notes", "amount_approved", "repayment_term_days", "decision_date", "payment_date", "repayment_due_date", "amount_repaid", "outstanding_amount", "is_overdue", "rejection_reason"],
   tabung: ["record_id", "type", "amount", "date", "description", "recorded_by", "recipient"],
   announcements: ["announcement_id", "title", "content", "category", "attachment_url", "publish_date", "created_by", "responsible_officer"],
   audit: ["timestamp", "user_id", "action", "details"],
@@ -45,6 +45,8 @@ function doPost(e) {
       case "assets/list": return json_({ ok: true, data: adminListAssets_(body) });
       case "loans/all": return json_({ ok: true, data: adminListLoans_(body) });
       case "ikes/all": return json_({ ok: true, data: adminListIkes_(body) });
+      case "ikes/mine": return json_({ ok: true, data: userListIkes_(body) });
+      case "ikes/repayment": return json_({ ok: true, data: withLock_(() => ikesRepayment_(body)) });
       case "loan/request": return json_({ ok: true, data: withLock_(() => requestLoan_(body)) });
       case "loan/approve": return json_({ ok: true, data: withLock_(() => decideLoan_(body)) });
       case "loan/scan": return json_({ ok: true, data: withLock_(() => scanLoan_(body)) });
@@ -112,13 +114,50 @@ function adminListLoans_(body) {
   })).sort((a, b) => String(b.request_date).localeCompare(String(a.request_date)));
 }
 
+function mapIkesRow_(item, users) {
+  const reqAmt = Number(item.amount_requested || 0);
+  const appAmt = item.amount_approved !== undefined && item.amount_approved !== "" ? Number(item.amount_approved) : undefined;
+  const termDays = item.repayment_term_days !== undefined && item.repayment_term_days !== "" ? Number(item.repayment_term_days) : undefined;
+  const repaid = item.amount_repaid !== undefined && item.amount_repaid !== "" ? Number(item.amount_repaid) : 0;
+
+  let outstanding = undefined;
+  if (appAmt !== undefined) {
+    outstanding = Math.max(0, appAmt - repaid);
+  }
+
+  let isOverdue = false;
+  if (item.status === "PAID" && item.repayment_due_date) {
+    const todayStr = today_();
+    if (todayStr > String(item.repayment_due_date) && (outstanding === undefined || outstanding > 0)) {
+      isOverdue = true;
+    }
+  }
+
+  return Object.assign({}, item, {
+    amount_requested: reqAmt,
+    amount_approved: appAmt,
+    repayment_term_days: termDays,
+    amount_repaid: repaid,
+    outstanding_amount: outstanding !== undefined ? outstanding : (item.outstanding_amount !== undefined && item.outstanding_amount !== "" ? Number(item.outstanding_amount) : undefined),
+    is_overdue: isOverdue,
+    user_name: users[item.user_id] ? users[item.user_id].full_name : item.user_id
+  });
+}
+
 function adminListIkes_(body) {
   requireAdmin_(body.idToken);
   const users = indexBy_(rows_("tbl_users"), "user_id");
-  return rows_("tbl_ikes").map((item) => Object.assign({}, item, {
-    amount_requested: Number(item.amount_requested || 0),
-    user_name: users[item.user_id] ? users[item.user_id].full_name : item.user_id
-  })).sort((a, b) => String(b.request_date).localeCompare(String(a.request_date)));
+  return rows_("tbl_ikes").map((item) => mapIkesRow_(item, users))
+    .sort((a, b) => String(b.request_date).localeCompare(String(a.request_date)));
+}
+
+function userListIkes_(body) {
+  const user = requireUser_(body.idToken, false);
+  const users = indexBy_(rows_("tbl_users"), "user_id");
+  return rows_("tbl_ikes")
+    .filter((item) => String(item.user_id).toLowerCase() === user.email.toLowerCase())
+    .map((item) => mapIkesRow_(item, users))
+    .sort((a, b) => String(b.request_date).localeCompare(String(a.request_date)));
 }
 
 function listAssets_(includeAll) {
@@ -234,9 +273,39 @@ function decideIkes_(body) {
   const item = findBy_("tbl_ikes", "application_id", id);
   if (!item) throw new Error("iKES application not found.");
   if (item.status !== "PENDING") throw new Error("Only pending applications can be decided.");
+
   const reason = clean_(body.reason);
+  if (decision === "REJECTED") {
+    if (!reason) throw new Error("A reason is required when rejecting an application.");
+  }
+
   const notes = reason ? `${item.notes || ""}${item.notes ? " | " : ""}Admin: ${reason}` : item.notes;
-  updateBy_("tbl_ikes", "application_id", id, { status: decision, approved_by: admin.email, notes: notes });
+
+  const patch = {
+    status: decision,
+    approved_by: admin.email,
+    notes: notes,
+    decision_date: today_()
+  };
+
+  if (decision === "APPROVED") {
+    const amountApproved = Number(body.amount_approved);
+    if (isNaN(amountApproved) || amountApproved <= 0) {
+      throw new Error("Approved amount must be a positive number.");
+    }
+    const repaymentTermDays = Number(body.repayment_term_days);
+    if (isNaN(repaymentTermDays) || repaymentTermDays <= 0 || !Number.isInteger(repaymentTermDays)) {
+      throw new Error("Repayment term days must be a positive integer.");
+    }
+    patch.amount_approved = amountApproved;
+    patch.repayment_term_days = repaymentTermDays;
+    patch.outstanding_amount = amountApproved;
+    patch.amount_repaid = 0;
+  } else if (decision === "REJECTED") {
+    patch.rejection_reason = reason;
+  }
+
+  updateBy_("tbl_ikes", "application_id", id, patch);
   audit_(admin.email, `IKES_${decision}`, { application_id: id, reason: reason });
   sendMailSafe_(item.user_id, `iKES application ${decision.toLowerCase()}`, `Your application ${id} is ${decision}.${reason ? ` Reason: ${reason}` : ""}`);
   return { application_id: id, status: decision };
@@ -251,9 +320,81 @@ function updateIkesStatus_(body) {
   if (!item) throw new Error("iKES application not found.");
   if (status === "PAID" && item.status !== "APPROVED") throw new Error("Only approved applications can be marked paid.");
   if (status === "REPAID" && item.status !== "PAID") throw new Error("Only paid applications can be marked repaid.");
-  updateBy_("tbl_ikes", "application_id", id, { status: status });
+
+  const patch = { status: status };
+
+  if (status === "PAID") {
+    const payDate = clean_(body.payment_date) || today_();
+    patch.payment_date = payDate;
+
+    const termDays = Number(item.repayment_term_days || 0);
+    if (termDays > 0) {
+      const pDate = new Date(payDate);
+      pDate.setDate(pDate.getDate() + termDays);
+      const dueStr = Utilities.formatDate(pDate, Session.getScriptTimeZone() || "Asia/Kuala_Lumpur", "yyyy-MM-dd");
+      patch.repayment_due_date = dueStr;
+    }
+
+    patch.amount_repaid = Number(item.amount_repaid || 0);
+    const approved = Number(item.amount_approved || 0);
+    patch.outstanding_amount = Math.max(0, approved - patch.amount_repaid);
+  } else if (status === "REPAID") {
+    const approved = Number(item.amount_approved || 0);
+    patch.amount_repaid = approved;
+    patch.outstanding_amount = 0;
+  }
+
+  updateBy_("tbl_ikes", "application_id", id, patch);
   audit_(admin.email, `IKES_${status}`, { application_id: id });
-  return { application_id: id, status: status };
+
+  const finalItem = findBy_("tbl_ikes", "application_id", id);
+  const users = indexBy_(rows_("tbl_users"), "user_id");
+  const mapped = mapIkesRow_(finalItem, users);
+
+  return {
+    application_id: id,
+    status: mapped.status,
+    payment_date: mapped.payment_date,
+    repayment_due_date: mapped.repayment_due_date,
+    amount_approved: mapped.amount_approved,
+    amount_repaid: mapped.amount_repaid,
+    outstanding_amount: mapped.outstanding_amount,
+    is_overdue: mapped.is_overdue
+  };
+}
+
+function ikesRepayment_(body) {
+  const admin = requireAdmin_(body.idToken);
+  const id = required_(body.application_id, "application_id");
+  const incrementalAmount = Number(body.amount);
+  if (isNaN(incrementalAmount) || incrementalAmount <= 0) {
+    throw new Error("Repayment amount must be a positive number.");
+  }
+
+  const item = findBy_("tbl_ikes", "application_id", id);
+  if (!item) throw new Error("iKES application not found.");
+  if (item.status !== "PAID") throw new Error("Repayment can only be recorded for PAID applications.");
+
+  const currentRepaid = Number(item.amount_repaid || 0);
+  const approved = Number(item.amount_approved || 0);
+  const newRepaid = currentRepaid + incrementalAmount;
+  const newOutstanding = Math.max(0, approved - newRepaid);
+
+  const patch = {
+    amount_repaid: newRepaid,
+    outstanding_amount: newOutstanding
+  };
+
+  if (newOutstanding <= 0) {
+    patch.status = "REPAID";
+  }
+
+  updateBy_("tbl_ikes", "application_id", id, patch);
+  audit_(admin.email, "IKES_REPAYMENT", { application_id: id, amount: incrementalAmount, repayment_date: body.repayment_date });
+
+  const finalItem = findBy_("tbl_ikes", "application_id", id);
+  const users = indexBy_(rows_("tbl_users"), "user_id");
+  return mapIkesRow_(finalItem, users);
 }
 
 function recordTabung_(body) {

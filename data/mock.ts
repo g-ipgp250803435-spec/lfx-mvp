@@ -14,7 +14,9 @@ export const mockLoans: Loan[] = [
 
 export const mockIkes: IkesApplication[] = [
   { application_id: "IKES-31001", user_id: "sarah@ipg.edu.my", user_name: "Sarah Imani", type: "CARE", amount_requested: 50, ticket_proof_url: "", status: "PENDING", request_date: "2026-07-31T01:15:00Z", approved_by: "", notes: "Keperluan harian sementara menunggu elaun." },
-  { application_id: "IKES-31002", user_id: "hakim@ipg.edu.my", user_name: "Hakim Zikri", type: "GO_HOME", amount_requested: 86, ticket_proof_url: "https://example.com/ticket-proof", status: "PAID", request_date: "2026-07-24T10:00:00Z", approved_by: "treasurer@ipg.edu.my", notes: "Tiket bas pulang ke kampung." }
+  { application_id: "IKES-31002", user_id: "demo.user@ipg.edu.my", user_name: "Pengguna Demo", type: "GO_HOME", amount_requested: 86, ticket_proof_url: "https://example.com/ticket-proof", status: "PAID", request_date: "2026-07-24T10:00:00Z", approved_by: "treasurer@ipg.edu.my", notes: "Tiket bas pulang ke kampung.", amount_approved: 86, repayment_term_days: 3, decision_date: "2026-07-25", payment_date: "2026-07-26", repayment_due_date: "2026-07-29", amount_repaid: 30, outstanding_amount: 56, is_overdue: true },
+  { application_id: "IKES-31003", user_id: "demo.user@ipg.edu.my", user_name: "Pengguna Demo", type: "CARE", amount_requested: 50, ticket_proof_url: "", status: "APPROVED", request_date: "2026-07-28T09:00:00Z", approved_by: "treasurer@ipg.edu.my", notes: "Kecemasan perubatan ringan.", amount_approved: 50, repayment_term_days: 7, decision_date: "2026-07-29" },
+  { application_id: "IKES-31004", user_id: "demo.user@ipg.edu.my", user_name: "Pengguna Demo", type: "CARE", amount_requested: 30, ticket_proof_url: "", status: "REJECTED", request_date: "2026-07-20T08:00:00Z", approved_by: "treasurer@ipg.edu.my", notes: "Membeli buku rujukan.", rejection_reason: "iKES terhad kepada kebajikan mendesak & tambang pulang sahaja." }
 ];
 
 export const mockTabung: TabungRecord[] = [
