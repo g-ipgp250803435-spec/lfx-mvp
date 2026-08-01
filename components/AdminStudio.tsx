@@ -8,7 +8,7 @@ import { GoogleAuth, type SignedInUser } from "@/components/GoogleAuth";
 import { MediaUploader } from "@/components/MediaUploader";
 import { RejectionDialog } from "@/components/RejectionDialog";
 import { TabungChart, AssetUtilisationChart } from "@/components/LightweightCharts";
-import { normalizePageBlocks } from "@/lib/block-utils";
+import { normalizePageBlocks, normalizeOrgItem } from "@/lib/block-utils";
 import { Icon } from "@/components/Icon";
 import { QrScanner } from "@/components/QrScanner";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -58,11 +58,11 @@ export function AdminStudio() {
   const loadOrgItems = useCallback(async () => {
     try {
       if (isDemoMode) {
-        setOrganisationItems(demoStore.getOrganisationItems());
+        setOrganisationItems((demoStore.getOrganisationItems() || []).map(normalizeOrgItem));
       } else {
         const res = await apiGet<OrgItem[]>("organisation/get");
         if (res.ok && res.data) {
-          setOrganisationItems(res.data);
+          setOrganisationItems((res.data || []).map(normalizeOrgItem));
         }
       }
     } catch (e) {
@@ -345,11 +345,20 @@ export function AdminStudio() {
         }
       }
 
+      // Convert or normalize to keep both id/type and item_id/item_type fields
+      const itemsWithBothFields = itemsToSave.map((item) => ({
+        ...item,
+        id: item.id || item.item_id || "",
+        type: item.type || item.item_type || "UNIT",
+        item_id: item.item_id || item.id || "",
+        item_type: item.item_type || item.type || "UNIT"
+      }));
+
       if (isDemoMode) {
-        demoStore.saveOrganisationItems(itemsToSave);
-        setOrganisationItems(itemsToSave);
+        demoStore.saveOrganisationItems(itemsWithBothFields);
+        setOrganisationItems(itemsWithBothFields);
       } else if (user) {
-        await apiPost("organisation/saveAll", { idToken: user.idToken, items: itemsToSave });
+        await apiPost("organisation/saveAll", { idToken: user.idToken, items: itemsWithBothFields });
         await loadOrgItems();
       }
     }, language === "bm" ? "Kandungan organisasi berjaya disimpan." : "Organisation content saved.");
@@ -1025,7 +1034,9 @@ function IkesAdmin({
   onRepay: (id: string) => void;
   busy: boolean;
 }) {
+  const { language } = useApp();
   const [selectedApp, setSelectedApp] = useState<IkesApplication | null>(null);
+  const [copied, setCopied] = useState(false);
 
   return (
     <section className="admin-card">
@@ -1203,17 +1214,19 @@ function IkesAdmin({
             color: "var(--text)",
             borderRadius: "8px",
             width: "100%",
-            maxWidth: "600px",
+            maxWidth: "650px",
             boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
             padding: "24px",
             maxHeight: "90vh",
             overflowY: "auto",
             border: "1px solid var(--line)"
           }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--line)", paddingBottom: "12px", marginBottom: "16px" }}>
-              <h3 style={{ margin: 0 }}>Application Details — {selectedApp.application_id}</h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--line)", paddingBottom: "12px", marginBottom: "20px" }}>
+              <h3 style={{ margin: 0 }}>
+                {language === "bm" ? `Butiran Permohonan — ${selectedApp.application_id}` : `Application Details — ${selectedApp.application_id}`}
+              </h3>
               <button
-                onClick={() => setSelectedApp(null)}
+                onClick={() => { setSelectedApp(null); setCopied(false); }}
                 style={{
                   background: "none",
                   border: "none",
@@ -1226,68 +1239,253 @@ function IkesAdmin({
               </button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", fontSize: "0.9rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+              {/* Section 1: Student Information */}
               <div>
-                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Applicant Name</span>
-                <strong>{selectedApp.user_name || "—"}</strong>
-              </div>
-              <div>
-                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Email Address</span>
-                <strong>{selectedApp.user_id}</strong>
-              </div>
-              <div>
-                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Intake</span>
-                <strong>{selectedApp.intake || "—"}</strong>
-              </div>
-              <div>
-                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Class</span>
-                <strong>{selectedApp.class_name || "—"}</strong>
-              </div>
-              <div>
-                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Phone Number</span>
-                <strong>{selectedApp.phone_number || "—"}</strong>
-              </div>
-              <div>
-                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Bank Name</span>
-                <strong>{selectedApp.bank_name || "—"}</strong>
-              </div>
-              <div style={{ gridColumn: "span 2" }}>
-                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Full Bank Account Number</span>
-                <strong style={{ fontSize: "1.1rem", color: "#0d4d41" }}>
-                  {selectedApp.bank_account_number || selectedApp.bank_account_masked || "—"}
-                </strong>
-              </div>
-              <div>
-                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Requested Amount</span>
-                <strong>{money(selectedApp.amount_requested)}</strong>
-              </div>
-              <div>
-                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Approved Amount</span>
-                <strong>{selectedApp.amount_approved !== undefined ? money(selectedApp.amount_approved) : "—"}</strong>
-              </div>
-              <div>
-                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Status</span>
-                <div style={{ marginTop: "4px" }}><StatusBadge status={selectedApp.status} /></div>
-              </div>
-              <div>
-                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Request Date</span>
-                <strong>{formatDate(selectedApp.request_date)}</strong>
-              </div>
-              {selectedApp.notes && (
-                <div style={{ gridColumn: "span 2" }}>
-                  <span style={{ display: "block", color: "var(--muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>Notes</span>
-                  <div style={{ marginTop: "4px", background: "var(--soft-bg)", padding: "8px", borderRadius: "4px" }}>
-                    {selectedApp.notes}
+                <h4 style={{
+                  fontSize: "1rem",
+                  color: "#0d4d41",
+                  borderBottom: "1px solid var(--line)",
+                  paddingBottom: "4px",
+                  marginBottom: "12px",
+                  fontWeight: "bold"
+                }}>
+                  {language === "bm" ? "Maklumat Pelajar" : "Student Information"}
+                </h4>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", fontSize: "0.85rem" }}>
+                  <div style={{ wordBreak: "break-word" }}>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Nama Penuh Pelajar" : "Student Full Name"}
+                    </span>
+                    <strong>{selectedApp.user_name || "—"}</strong>
+                  </div>
+                  <div style={{ wordBreak: "break-all" }}>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Emel Pelajar" : "Student Email"}
+                    </span>
+                    <strong>{selectedApp.user_id || "—"}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Ambilan" : "Intake"}
+                    </span>
+                    <strong>{selectedApp.intake || "—"}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Kelas" : "Class"}
+                    </span>
+                    <strong>{selectedApp.class_name || "—"}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Nombor Telefon" : "Phone Number"}
+                    </span>
+                    <strong>{selectedApp.phone_number || "—"}</strong>
                   </div>
                 </div>
-              )}
+              </div>
+
+              {/* Section 2: Bank Information */}
+              <div>
+                <h4 style={{
+                  fontSize: "1rem",
+                  color: "#0d4d41",
+                  borderBottom: "1px solid var(--line)",
+                  paddingBottom: "4px",
+                  marginBottom: "12px",
+                  fontWeight: "bold"
+                }}>
+                  {language === "bm" ? "Maklumat Bank" : "Bank Information"}
+                </h4>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", fontSize: "0.85rem" }}>
+                  <div>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Nama Bank" : "Bank Name"}
+                    </span>
+                    <strong>{selectedApp.bank_name || "—"}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Nombor Akaun Bank" : "Bank Account Number"}
+                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", wordBreak: "break-all" }}>
+                      <strong style={{ fontSize: "1rem", color: "#0d4d41" }}>
+                        {selectedApp.bank_account_number || selectedApp.bank_account_masked || "—"}
+                      </strong>
+                      {(selectedApp.bank_account_number || selectedApp.bank_account_masked) && (
+                        <button
+                          onClick={async () => {
+                            const val = selectedApp.bank_account_number || selectedApp.bank_account_masked || "";
+                            if (val) {
+                              await navigator.clipboard.writeText(val);
+                              setCopied(true);
+                              setTimeout(() => setCopied(false), 2000);
+                            }
+                          }}
+                          style={{
+                            padding: "2px 8px",
+                            fontSize: "0.7rem",
+                            cursor: "pointer",
+                            background: "var(--line)",
+                            border: "1px solid var(--muted)",
+                            borderRadius: "4px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}
+                        >
+                          {copied ? (language === "bm" ? "Disalin!" : "Copied!") : (language === "bm" ? "Salin" : "Copy")}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3: Application Information */}
+              <div>
+                <h4 style={{
+                  fontSize: "1rem",
+                  color: "#0d4d41",
+                  borderBottom: "1px solid var(--line)",
+                  paddingBottom: "4px",
+                  marginBottom: "12px",
+                  fontWeight: "bold"
+                }}>
+                  {language === "bm" ? "Maklumat Permohonan" : "Application Information"}
+                </h4>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", fontSize: "0.85rem" }}>
+                  <div>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Kategori iKES" : "iKES Category"}
+                    </span>
+                    <strong>{selectedApp.type || "—"}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Jumlah Dimohon" : "Amount Requested"}
+                    </span>
+                    <strong>{money(selectedApp.amount_requested)}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Tarikh Permohonan" : "Application Date"}
+                    </span>
+                    <strong>{formatDate(selectedApp.request_date)}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Bukti Tiket" : "Ticket Proof"}
+                    </span>
+                    {selectedApp.ticket_proof_url ? (
+                      <a
+                        href={selectedApp.ticket_proof_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ textDecoration: "underline", color: "#0d4d41", fontWeight: "bold" }}
+                      >
+                        {language === "bm" ? "Lihat Bukti Tiket" : "View Ticket Proof"}
+                      </a>
+                    ) : (
+                      <span>—</span>
+                    )}
+                  </div>
+                  <div style={{ gridColumn: "span 2", wordBreak: "break-word" }}>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Nota Pelajar" : "Student Notes"}
+                    </span>
+                    <div style={{ marginTop: "4px", background: "var(--soft-bg)", padding: "8px", borderRadius: "4px" }}>
+                      {selectedApp.notes || "—"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 4: Decision and Repayment */}
+              <div>
+                <h4 style={{
+                  fontSize: "1rem",
+                  color: "#0d4d41",
+                  borderBottom: "1px solid var(--line)",
+                  paddingBottom: "4px",
+                  marginBottom: "12px",
+                  fontWeight: "bold"
+                }}>
+                  {language === "bm" ? "Keputusan & Bayaran Balik" : "Decision & Repayment"}
+                </h4>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", fontSize: "0.85rem" }}>
+                  <div>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Status Semasa" : "Current Status"}
+                    </span>
+                    <div style={{ marginTop: "4px" }}><StatusBadge status={selectedApp.status} /></div>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Jumlah Diluluskan" : "Amount Approved"}
+                    </span>
+                    <strong>{selectedApp.amount_approved !== undefined ? money(selectedApp.amount_approved) : "—"}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Tarikh Keputusan" : "Decision Date"}
+                    </span>
+                    <strong>{selectedApp.decision_date ? formatDate(selectedApp.decision_date) : "—"}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Tarikh Bayaran" : "Payment Date"}
+                    </span>
+                    <strong>{selectedApp.payment_date ? formatDate(selectedApp.payment_date) : "—"}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Tarikh Akhir Bayaran Balik" : "Repayment Due Date"}
+                    </span>
+                    <strong>{selectedApp.repayment_due_date ? formatDate(selectedApp.repayment_due_date) : "—"}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Jumlah Dibayar Balik" : "Amount Repaid"}
+                    </span>
+                    <strong>{selectedApp.amount_repaid !== undefined ? money(selectedApp.amount_repaid) : "—"}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Baki Terhutang" : "Outstanding Amount"}
+                    </span>
+                    <strong>
+                      {selectedApp.outstanding_amount !== undefined ? money(selectedApp.outstanding_amount) : (
+                        selectedApp.amount_approved !== undefined ? money(Math.max(0, selectedApp.amount_approved - (selectedApp.amount_repaid || 0))) : "—"
+                      )}
+                    </strong>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                      {language === "bm" ? "Administrator Meluluskan" : "Approving Administrator"}
+                    </span>
+                    <strong>{selectedApp.approved_by || "—"}</strong>
+                  </div>
+                  {selectedApp.rejection_reason && (
+                    <div style={{ gridColumn: "span 2", wordBreak: "break-word" }}>
+                      <span style={{ display: "block", color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                        {language === "bm" ? "Sebab Penolakan" : "Sebab Penolakan"}
+                      </span>
+                      <div style={{ marginTop: "4px", background: "rgba(145, 55, 55, 0.08)", padding: "8px", borderRadius: "4px", color: "#913737", fontWeight: "bold" }}>
+                        {selectedApp.rejection_reason}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <div style={{ marginTop: "24px", display: "flex", justifyContent: "flex-end" }}>
+            <div style={{ marginTop: "28px", display: "flex", justifyContent: "flex-end", borderTop: "1px solid var(--line)", paddingTop: "16px" }}>
               <button
-                onClick={() => setSelectedApp(null)}
+                onClick={() => { setSelectedApp(null); setCopied(false); }}
                 style={{
-                  padding: "8px 16px",
+                  padding: "8px 20px",
                   backgroundColor: "var(--line)",
                   border: "none",
                   borderRadius: "4px",
@@ -1295,7 +1493,7 @@ function IkesAdmin({
                   fontWeight: "bold"
                 }}
               >
-                Close
+                {language === "bm" ? "Tutup" : "Close"}
               </button>
             </div>
           </div>
