@@ -320,6 +320,17 @@ export function AdminStudio() {
     } else if (user) { await apiPost("tabung/record", { idToken: user.idToken, ...record }); await loadData(); }
   }, language === "bm" ? "Rekod Tabung Jumaat ditambah." : "Friday Fund record added.");
 
+  const deleteTabungRecord = (recordId: string) => run(async () => {
+    if (isDemoMode) {
+      const next = tabung.filter((r) => r.record_id !== recordId);
+      setTabung(next);
+      demoStore.saveTabung(next);
+    } else if (user) {
+      await apiPost("tabung/delete", { idToken: user.idToken, record_id: recordId });
+      await loadData();
+    }
+  }, language === "bm" ? "Rekod Tabung Jumaat berjaya dipadamkan." : "Friday Fund record successfully deleted.");
+
   const saveAnnouncements = () => run(async () => {
     if (isDemoMode) demoStore.saveAnnouncements(announcements);
     else if (user) await apiPost("announcements/saveAll", { idToken: user.idToken, announcements });
@@ -379,11 +390,11 @@ export function AdminStudio() {
   return <div className="admin-shell">
     <aside className="admin-sidebar"><div className="admin-brand"><Image src="/lfx-mark.svg" alt="HiPER" width={52} height={52}/><span><strong>HiPER Studio</strong><small>{session.email}</small></span></div><nav>{tabs.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => { setTab(item.id); setFlash(null); }}><Icon name={item.icon}/>{language === "bm" ? item.bm : item.en}</button>)}</nav><Link href="/" className="admin-back"><Icon name="arrow" size={17}/>{language === "bm" ? "Lihat portal" : "View portal"}</Link></aside>
     <main className="admin-main"><header className="admin-topbar"><div><span className="eyebrow">Office Operating System</span><h1>{tabs.find((item) => item.id === tab)?.[language]}</h1></div><span className="mode-pill">{isDemoMode ? "DEMO" : "LIVE"}</span></header><FlashMessage flash={flash}/>
-      {tab === "overview" && <Overview assets={assets} loans={loans} ikes={ikes} tabung={tabung}/>} 
+      {tab === "overview" && <Overview assets={assets} loans={loans} ikes={ikes} tabung={tabung} busy={busy}/>}
       {tab === "content" && <ContentEditor content={content} setContent={setContent} onSave={saveContent} idToken={user?.idToken || ""} busy={busy}/>}
       {tab === "assets" && <AssetAdmin assets={assets} setAssets={setAssets} loans={loans} onSave={saveAssets} onDecision={loanDecision} onScan={scanLoan} idToken={user?.idToken || ""} busy={busy}/>}
       {tab === "ikes" && <IkesAdmin applications={ikes} onStatus={ikesDecision} onRepay={ikesRepayment} busy={busy}/>}
-      {tab === "tabung" && <TabungAdmin records={tabung} onCreate={saveTabungRecord} busy={busy}/>} 
+      {tab === "tabung" && <TabungAdmin records={tabung} onCreate={saveTabungRecord} onDelete={deleteTabungRecord} busy={busy}/>}
       {tab === "announcements" && <AnnouncementAdmin items={announcements} setItems={setAnnouncements} onSave={saveAnnouncements} idToken={user?.idToken || ""} busy={busy}/>}
       {tab === "organisation" && <OrganisationEditor items={organisationItems} setItems={setOrganisationItems} onSave={saveOrgItems} busy={busy}/>}
     </main>
@@ -426,7 +437,7 @@ export function AdminStudio() {
   </div>;
 }
 
-function Overview({ assets, loans, ikes, tabung }: { assets: Asset[]; loans: Loan[]; ikes: IkesApplication[]; tabung: TabungRecord[] }) {
+function Overview({ assets, loans, ikes, tabung, busy }: { assets: Asset[]; loans: Loan[]; ikes: IkesApplication[]; tabung: TabungRecord[]; busy?: boolean }) {
   const balance = tabung.reduce((sum, item) => sum + (item.type === "COLLECTION" ? Number(item.amount) : -Number(item.amount)), 0);
   const metrics = [
     { label: "Assets available", value: assets.filter((item) => item.status === "AVAILABLE").length, icon: "briefcase" },
@@ -434,6 +445,19 @@ function Overview({ assets, loans, ikes, tabung }: { assets: Asset[]; loans: Loa
     { label: "iKES pending", value: ikes.filter((item) => item.status === "PENDING").length, icon: "heart" },
     { label: "Friday Fund balance", value: money(balance), icon: "wallet" }
   ];
+
+  // Calculate sum of outstanding repayments from iKES applications
+  const totalExpectedReturns = ikes.reduce((sum, item) => {
+    const amt = typeof item.outstanding_amount === "number"
+      ? item.outstanding_amount
+      : parseFloat(String(item.outstanding_amount || 0));
+    return sum + (Number.isNaN(amt) ? 0 : amt);
+  }, 0);
+
+  const activeRepayments = ikes
+    .filter((item) => (item.outstanding_amount || 0) > 0)
+    .sort((a, b) => (a.repayment_due_date || "").localeCompare(b.repayment_due_date || ""));
+
   return (
     <>
       <div className="admin-metrics">
@@ -459,22 +483,37 @@ function Overview({ assets, loans, ikes, tabung }: { assets: Asset[]; loans: Loa
 
       <div className="admin-grid">
         <section className="admin-card">
-          <div className="admin-card__heading">
+          <div className="admin-card__heading" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <h2>Expected returns</h2>
+            <strong style={{ fontSize: "1.2rem", color: "var(--brand-2)" }}>
+              {busy && ikes.length === 0 ? "..." : money(totalExpectedReturns)}
+            </strong>
           </div>
           <div className="admin-list">
-            {loans
-              .filter((item) => item.status === "ACTIVE")
-              .slice(0, 6)
-              .map((loan) => (
-                <article key={loan.loan_id}>
+            {busy && ikes.length === 0 ? (
+              <div style={{ padding: "16px", textAlign: "center", color: "var(--muted)" }}>
+                Loading expected returns...
+              </div>
+            ) : activeRepayments.length > 0 ? (
+              activeRepayments.slice(0, 6).map((app) => (
+                <article key={app.application_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
-                    <strong>{loan.asset_name || loan.asset_id}</strong>
-                    <span>{loan.user_name || loan.user_id}</span>
+                    <strong>{app.user_name || app.user_id}</strong>
+                    <span>{app.type} · {app.application_id}</span>
                   </div>
-                  <time>{formatDate(loan.date_returned_expected)}</time>
+                  <div style={{ textAlign: "right" }}>
+                    <strong style={{ display: "block", color: "var(--brand-2)" }}>{money(app.outstanding_amount || 0)}</strong>
+                    <small style={{ color: "var(--muted)", fontSize: "0.7rem" }}>
+                      Due: {app.repayment_due_date ? formatDate(app.repayment_due_date) : "—"}
+                    </small>
+                  </div>
                 </article>
-              ))}
+              ))
+            ) : (
+              <div className="empty-state" style={{ padding: "16px", textAlign: "center", color: "var(--muted)" }}>
+                RM0.00
+              </div>
+            )}
           </div>
         </section>
 
@@ -1241,14 +1280,21 @@ function IkesAdmin({
 
             <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
               {/* Section 1: Student Information */}
-              <div>
+              <div className="ikes-info-card" style={{
+                backgroundColor: "var(--surface)",
+                border: "1px solid var(--line)",
+                borderRadius: "8px",
+                padding: "20px",
+                boxShadow: "var(--shadow-sm)"
+              }}>
                 <h4 style={{
                   fontSize: "1rem",
                   color: "var(--brand-2)",
                   borderBottom: "1px solid var(--line)",
                   paddingBottom: "4px",
                   marginBottom: "12px",
-                  fontWeight: "bold"
+                  fontWeight: "bold",
+                  marginTop: 0
                 }}>
                   {language === "bm" ? "Maklumat Pelajar" : "Student Information"}
                 </h4>
@@ -1287,14 +1333,21 @@ function IkesAdmin({
               </div>
 
               {/* Section 2: Bank Information */}
-              <div>
+              <div className="ikes-info-card" style={{
+                backgroundColor: "var(--surface)",
+                border: "1px solid var(--line)",
+                borderRadius: "8px",
+                padding: "20px",
+                boxShadow: "var(--shadow-sm)"
+              }}>
                 <h4 style={{
                   fontSize: "1rem",
                   color: "var(--brand-2)",
                   borderBottom: "1px solid var(--line)",
                   paddingBottom: "4px",
                   marginBottom: "12px",
-                  fontWeight: "bold"
+                  fontWeight: "bold",
+                  marginTop: 0
                 }}>
                   {language === "bm" ? "Maklumat Bank" : "Bank Information"}
                 </h4>
@@ -1344,14 +1397,21 @@ function IkesAdmin({
               </div>
 
               {/* Section 3: Application Information */}
-              <div>
+              <div className="ikes-info-card" style={{
+                backgroundColor: "var(--surface)",
+                border: "1px solid var(--line)",
+                borderRadius: "8px",
+                padding: "20px",
+                boxShadow: "var(--shadow-sm)"
+              }}>
                 <h4 style={{
                   fontSize: "1rem",
                   color: "var(--brand-2)",
                   borderBottom: "1px solid var(--line)",
                   paddingBottom: "4px",
                   marginBottom: "12px",
-                  fontWeight: "bold"
+                  fontWeight: "bold",
+                  marginTop: 0
                 }}>
                   {language === "bm" ? "Maklumat Permohonan" : "Application Information"}
                 </h4>
@@ -1403,14 +1463,21 @@ function IkesAdmin({
               </div>
 
               {/* Section 4: Decision and Repayment */}
-              <div>
+              <div className="ikes-info-card" style={{
+                backgroundColor: "var(--surface)",
+                border: "1px solid var(--line)",
+                borderRadius: "8px",
+                padding: "20px",
+                boxShadow: "var(--shadow-sm)"
+              }}>
                 <h4 style={{
                   fontSize: "1rem",
                   color: "var(--brand-2)",
                   borderBottom: "1px solid var(--line)",
                   paddingBottom: "4px",
                   marginBottom: "12px",
-                  fontWeight: "bold"
+                  fontWeight: "bold",
+                  marginTop: 0
                 }}>
                   {language === "bm" ? "Keputusan & Bayaran Balik" : "Decision & Repayment"}
                 </h4>
@@ -1503,15 +1570,129 @@ function IkesAdmin({
   );
 }
 
-function TabungAdmin({ records, onCreate, busy }: { records: TabungRecord[]; onCreate: (record: Omit<TabungRecord, "record_id" | "recorded_by">) => void; busy: boolean }) {
+function TabungAdmin({ records, onCreate, onDelete, busy }: { records: TabungRecord[]; onCreate: (record: Omit<TabungRecord, "record_id" | "recorded_by">) => void; onDelete: (recordId: string) => void; busy: boolean }) {
+  const { language } = useApp();
   const [form, setForm] = useState<Omit<TabungRecord, "record_id" | "recorded_by">>({ type: "COLLECTION", amount: 0, date: new Date().toISOString().slice(0,10), description: "", recipient: "" });
-  return <div className="admin-grid"><section className="admin-card"><div className="admin-card__heading"><div><h2>Add record</h2><p>Every collection and distribution becomes part of the public report.</p></div></div><form className="application-form" onSubmit={(e) => { e.preventDefault(); onCreate(form); setForm({ ...form, amount: 0, description: "", recipient: "" }); }}><label><span>Type</span><select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as TabungRecord["type"] })}><option>COLLECTION</option><option>DISTRIBUTION</option></select></label><label><span>Amount (RM)</span><input required type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })}/></label><label><span>Date</span><input required type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}/></label><label><span>Description / purpose</span><textarea required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}/></label>{form.type === "DISTRIBUTION" && <label><span>Recipient (optional)</span><input value={form.recipient || ""} onChange={(e) => setForm({ ...form, recipient: e.target.value })}/></label>}<button disabled={busy} className="button" type="submit"><Icon name="plus" size={17}/>Add record</button></form></section><section className="admin-card"><div className="admin-card__heading"><h2>Recent records</h2></div><div className="admin-list">{records.slice().sort((a,b) => b.date.localeCompare(a.date)).slice(0,12).map((record) => <article key={record.record_id}><div><strong>{record.description}</strong><span>{record.type} · {formatDate(record.date)}</span></div><b className={record.type === "COLLECTION" ? "positive" : "negative"}>{record.type === "COLLECTION" ? "+" : "−"}{money(record.amount)}</b></article>)}</div></section></div>;
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  const recordToDelete = records.find(r => r.record_id === deleteConfirmId);
+
+  return (
+    <div className="admin-grid">
+      <section className="admin-card">
+        <div className="admin-card__heading">
+          <div>
+            <h2>Add record</h2>
+            <p>Every collection and distribution becomes part of the public report.</p>
+          </div>
+        </div>
+        <form className="application-form" onSubmit={(e) => { e.preventDefault(); onCreate(form); setForm({ ...form, amount: 0, description: "", recipient: "" }); }}>
+          <label>
+            <span>Type</span>
+            <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as TabungRecord["type"] })}>
+              <option>COLLECTION</option>
+              <option>DISTRIBUTION</option>
+            </select>
+          </label>
+          <label>
+            <span>Amount (RM)</span>
+            <input required type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })}/>
+          </label>
+          <label>
+            <span>Date</span>
+            <input required type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}/>
+          </label>
+          <label>
+            <span>Description / purpose</span>
+            <textarea required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}/>
+          </label>
+          {form.type === "DISTRIBUTION" && (
+            <label>
+              <span>Recipient (optional)</span>
+              <input value={form.recipient || ""} onChange={(e) => setForm({ ...form, recipient: e.target.value })}/>
+            </label>
+          )}
+          <button disabled={busy} className="button" type="submit">
+            <Icon name="plus" size={17}/>Add record
+          </button>
+        </form>
+      </section>
+
+      <section className="admin-card">
+        <div className="admin-card__heading">
+          <h2>Recent records</h2>
+        </div>
+        <div className="admin-list">
+          {records.slice().sort((a,b) => b.date.localeCompare(a.date)).slice(0,12).map((record) => (
+            <article key={record.record_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <strong>{record.description}</strong>
+                <span>{record.type} · {formatDate(record.date)}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <b className={record.type === "COLLECTION" ? "positive" : "negative"}>
+                  {record.type === "COLLECTION" ? "+" : "−"}{money(record.amount)}
+                </b>
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmId(record.record_id)}
+                  className="danger-icon"
+                  style={{ background: "transparent", border: "none", cursor: "pointer", padding: "4px" }}
+                  title={language === "bm" ? "Padam" : "Delete"}
+                >
+                  <Icon name="trash" size={17} />
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* Delete confirmation dialog overlay */}
+      {recordToDelete && (
+        <div className="modal-backdrop" onClick={() => setDeleteConfirmId(null)} style={{ display: "flex" }}>
+          <div className="officer-modal" onClick={(e) => e.stopPropagation()} style={{ background: "var(--surface)", border: "1px solid var(--line)" }}>
+            <h3 style={{ margin: "0 0 12px 0", font: "600 1.5rem var(--serif)", color: "var(--text-primary)" }}>
+              {language === "bm"
+                ? `Padam rekod ${recordToDelete.description}?`
+                : `Delete record ${recordToDelete.description}?`}
+            </h3>
+            <p style={{ margin: "16px 0", color: "var(--muted)", fontSize: "0.9rem" }}>
+              {language === "bm"
+                ? "Tindakan ini akan memadamkan rekod yang dipilih. Tindakan ini tidak boleh dibatalkan."
+                : "This action will delete the selected record. This action cannot be undone."}
+            </p>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginTop: "24px" }}>
+              <button
+                type="button"
+                className="button button--outline"
+                onClick={() => setDeleteConfirmId(null)}
+              >
+                {language === "bm" ? "Batal" : "Cancel"}
+              </button>
+              <button
+                type="button"
+                className="button"
+                style={{ background: "red", borderColor: "red", color: "white" }}
+                onClick={() => {
+                  onDelete(recordToDelete.record_id);
+                  setDeleteConfirmId(null);
+                }}
+              >
+                {language === "bm" ? "Padam Rekod" : "Delete Record"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function AnnouncementAdmin({ items, setItems, onSave, idToken, busy }: { items: Announcement[]; setItems: (items: Announcement[]) => void; onSave: () => void; idToken: string; busy: boolean }) {
-  const add = () => setItems([{ announcement_id: uid("ANN").toUpperCase(), title: { bm: "Pengumuman baharu", en: "New announcement" }, content: { bm: "Kandungan pengumuman.", en: "Announcement content." }, category: "General", attachment_url: "", publish_date: new Date().toISOString().slice(0,10), created_by: "", responsible_officer: "" }, ...items]);
+  const add = () => setItems([{ announcement_id: uid("ANN").toUpperCase(), title: { bm: "Pengumuman baharu", en: "New announcement" }, content: { bm: "Kandungan pengumuman.", en: "Announcement content." }, category: "General", attachment_url: "", publish_date: new Date().toISOString().slice(0,10), created_by: "", responsible_officer: "", image_url: "" }, ...items]);
   return <section className="admin-card"><div className="admin-card__heading"><div><h2>Announcement Centre</h2><p>Create bilingual notices, categories and PDF links.</p></div><button className="button button--small button--outline" onClick={add}><Icon name="plus" size={16}/>New announcement</button></div><div className="announcement-editor">{items.map((item,index) => <article key={item.announcement_id}><div className="page-editor-list__top"><strong>{item.announcement_id}</strong><button className="danger-icon" onClick={() => setItems(items.filter((_,i) => i !== index))}><Icon name="trash" size={17}/></button></div><LocalizedInputs label="Title" value={item.title} onChange={(title) => { const next=[...items]; next[index]={...item,title}; setItems(next); }}/><LocalizedInputs label="Content" multiline value={item.content} onChange={(content) => { const next=[...items]; next[index]={...item,content}; setItems(next); }}/><div className="form-grid"><label><span>Category</span><input value={item.category} onChange={(e) => { const next=[...items]; next[index]={...item,category:e.target.value}; setItems(next); }}/></label><label><span>Publish date</span><input type="date" value={item.publish_date} onChange={(e) => { const next=[...items]; next[index]={...item,publish_date:e.target.value}; setItems(next); }}/></label><label><span>Attachment URL</span><input value={item.attachment_url} onChange={(e) => { const next=[...items]; next[index]={...item,attachment_url:e.target.value}; setItems(next); }}/></label><label><span>Responsible officer</span><input value={item.responsible_officer || ""} onChange={(e) => { const next=[...items]; next[index]={...item,responsible_officer:e.target.value}; setItems(next); }}/></label></div>
-    <div style={{ marginTop: "12px" }}>
+    <div style={{ marginTop: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
       <MediaUploader
         purpose="announcement_pdf"
         idToken={idToken}
@@ -1520,6 +1701,19 @@ function AnnouncementAdmin({ items, setItems, onSave, idToken, busy }: { items: 
         onRemove={() => { const next = [...items]; next[index] = { ...item, attachment_url: "" }; setItems(next); }}
         label="Announcement Attachment"
       />
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <MediaUploader
+          purpose="announcement_image"
+          idToken={idToken}
+          currentUrl={item.image_url || ""}
+          onUploadSuccess={(url) => { const next = [...items]; next[index] = { ...item, image_url: url }; setItems(next); }}
+          onRemove={() => { const next = [...items]; next[index] = { ...item, image_url: "" }; setItems(next); }}
+          label="Poster Pengumuman"
+        />
+        <small style={{ color: "var(--muted)", marginTop: "4px" }}>
+          Muat naik poster dalam format PNG, JPG atau JPEG. Saiz maksimum ialah 10 MB.
+        </small>
+      </div>
     </div>
   </article>)}</div><div className="admin-card__footer"><button disabled={busy} className="button" onClick={onSave}><Icon name="save" size={17}/>Save announcements</button></div></section>;
 }

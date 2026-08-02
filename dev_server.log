@@ -5,16 +5,30 @@
 ▲ Next.js 16.2.12 (Turbopack)
 - Local:         http://localhost:3000
 - Network:       http://192.168.0.2:3000
-✓ Ready in 630ms
+✓ Ready in 665ms
 
-○ Compiling / ...
- GET / 200 in 4.1s (next.js: 3.6s, application-code: 545ms)
- GET /admin 200 in 1054ms (next.js: 897ms, application-code: 156ms)
+ HEAD / 200 in 3.2s (next.js: 2.9s, application-code: 347ms)
+ GET /announcements 200 in 770ms (next.js: 636ms, application-code: 134ms)
+ GET /announcements 200 in 139ms (next.js: 7ms, application-code: 132ms)
+ GET /admin 200 in 986ms (next.js: 868ms, application-code: 118ms)
 [browser] Image with src "/lfx-mark.svg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
 Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
- GET / 200 in 208ms (next.js: 14ms, application-code: 194ms)
- GET / 200 in 91ms (next.js: 5ms, application-code: 86ms)
- GET /admin 200 in 119ms (next.js: 6ms, application-code: 113ms)
+ GET /admin 200 in 65ms (next.js: 4ms, application-code: 61ms)
 [browser] Image with src "/lfx-mark.svg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
 Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
- GET / 200 in 85ms (next.js: 4ms, application-code: 81ms)
+ GET /announcements 200 in 85ms (next.js: 5ms, application-code: 80ms)
+ GET /announcements 200 in 78ms (next.js: 4ms, application-code: 74ms)
+ GET /admin 200 in 64ms (next.js: 4ms, application-code: 60ms)
+[browser] Image with src "/lfx-mark.svg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+ GET /admin 200 in 80ms (next.js: 5ms, application-code: 75ms)
+[browser] Image with src "/lfx-mark.svg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+ GET /announcements 200 in 78ms (next.js: 6ms, application-code: 72ms)
+ GET /announcements 200 in 90ms (next.js: 5ms, application-code: 85ms)
+ GET /admin 200 in 71ms (next.js: 4ms, application-code: 67ms)
+[browser] Image with src "/lfx-mark.svg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+ GET /admin 200 in 73ms (next.js: 3ms, application-code: 70ms)
+[browser] Image with src "/lfx-mark.svg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading

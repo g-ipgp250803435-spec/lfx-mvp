@@ -5,7 +5,7 @@ import { Icon } from "@/components/Icon";
 import { apiPost, isDemoMode } from "@/lib/api";
 import { useApp } from "@/components/Providers";
 
-export type MediaPurpose = "logo" | "favicon" | "asset_image" | "announcement_pdf" | "donation_qr" | "officer_photo";
+export type MediaPurpose = "logo" | "favicon" | "asset_image" | "announcement_pdf" | "donation_qr" | "officer_photo" | "announcement_image";
 
 interface MediaUploaderProps {
   purpose: MediaPurpose;
@@ -46,6 +46,11 @@ const CONFIG: Record<MediaPurpose, { accept: string; maxSize: number; mimeTypes:
     accept: ".pdf",
     maxSize: 2.5 * 1024 * 1024,
     mimeTypes: ["application/pdf"]
+  },
+  announcement_image: {
+    accept: ".png,.jpg,.jpeg",
+    maxSize: 10 * 1024 * 1024,
+    mimeTypes: ["image/png", "image/jpeg"]
   }
 };
 
@@ -87,17 +92,31 @@ export function MediaUploader({
     // Validate type / MIME
     // Fallback comparison for file extension if mimeType is empty
     const fileType = file.type.toLowerCase();
-    const isMimeMatch = cfg.mimeTypes.includes(fileType);
     const fileExt = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
-    const isExtMatch = cfg.accept.split(",").includes(fileExt);
 
-    if (!isMimeMatch && !isExtMatch) {
-      setError(
-        language === "bm"
-          ? "Jenis fail tidak disokong."
-          : "Unsupported file type."
-      );
-      return;
+    if (purpose === "announcement_image") {
+      const validMimes = ["image/png", "image/jpeg"];
+      const validExts = [".png", ".jpg", ".jpeg"];
+      if (!validMimes.includes(fileType) || !validExts.includes(fileExt)) {
+        setError(
+          language === "bm"
+            ? "Format fail tidak disokong. Sila muat naik fail PNG, JPG atau JPEG."
+            : "Format fail tidak disokong. Sila muat naik fail PNG, JPG atau JPEG."
+        );
+        return;
+      }
+    } else {
+      const isMimeMatch = cfg.mimeTypes.includes(fileType);
+      const isExtMatch = cfg.accept.split(",").includes(fileExt);
+
+      if (!isMimeMatch && !isExtMatch) {
+        setError(
+          language === "bm"
+            ? "Jenis fail tidak disokong."
+            : "Unsupported file type."
+        );
+        return;
+      }
     }
 
     setBusy(true);

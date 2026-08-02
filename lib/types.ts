@@ -231,6 +231,7 @@ export type Announcement = {
   publish_date: string;
   created_by: string;
   responsible_officer?: string;
+  image_url?: string;
 };
 
 export type ApiResult<T> = {

@@ -100,28 +100,28 @@ export function TabungChart({ records }: { records: TabungRecord[] }) {
       <svg
         viewBox="0 0 450 180"
         width="100%"
-        height="100%"
+        height="auto"
         aria-label="Monthly Tabung Jumaat Collection and Distribution Chart"
         role="img"
-        style={{ overflow: "visible" }}
+        style={{ overflow: "visible", display: "block" }}
       >
         <title>{language === "bm" ? "Trend Bulanan Tabung Jumaat" : "Monthly Tabung Jumaat Trend"}</title>
 
         {/* Y Axis Gridlines */}
-        <line x1="40" y1="20" x2="430" y2="20" stroke="var(--line)" strokeDasharray="3 3" />
-        <line x1="40" y1="80" x2="430" y2="80" stroke="var(--line)" strokeDasharray="3 3" />
-        <line x1="40" y1="140" x2="430" y2="140" stroke="var(--line)" />
+        <line x1="85" y1="20" x2="440" y2="20" stroke="var(--line)" strokeDasharray="3 3" />
+        <line x1="85" y1="80" x2="440" y2="80" stroke="var(--line)" strokeDasharray="3 3" />
+        <line x1="85" y1="140" x2="440" y2="140" stroke="var(--line)" />
 
         {/* Labels for Y axis */}
-        <text x="35" y="24" textAnchor="end" fontSize="9" fill="var(--muted)">{money(maxVal)}</text>
-        <text x="35" y="84" textAnchor="end" fontSize="9" fill="var(--muted)">{money(maxVal / 2)}</text>
-        <text x="35" y="144" textAnchor="end" fontSize="9" fill="var(--muted)">RM0</text>
+        <text x="80" y="24" textAnchor="end" fontSize="9" fill="var(--muted)">{money(maxVal)}</text>
+        <text x="80" y="84" textAnchor="end" fontSize="9" fill="var(--muted)">{money(maxVal / 2)}</text>
+        <text x="80" y="144" textAnchor="end" fontSize="9" fill="var(--muted)">RM0</text>
 
         {data.map((d, i) => {
           // X offsets for grouped bars
           const groupWidth = 60;
           const barWidth = 18;
-          const startX = 60 + i * groupWidth + 10;
+          const startX = 105 + i * groupWidth + 10;
 
           const colHeight = d.collections * scale;
           const distHeight = d.distributions * scale;
