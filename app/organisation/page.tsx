@@ -111,8 +111,8 @@ export default function OrganisationPage() {
                 <div>
                   <h2 style={{
                     fontSize: "1.5rem",
-                    color: "#0d4d41",
-                    borderBottom: "2px solid #0d4d41",
+                    color: "var(--brand-2)",
+                    borderBottom: "2px solid var(--brand-2)",
                     paddingBottom: "8px",
                     marginBottom: "16px"
                   }}>
@@ -137,8 +137,8 @@ export default function OrganisationPage() {
                           {item.code && (
                             <span style={{
                               marginLeft: "8px",
-                              background: "#0d4d41",
-                              color: "#fff",
+                              background: "var(--accent)",
+                              color: "var(--background)",
                               fontSize: "0.75rem",
                               padding: "2px 6px",
                               borderRadius: "4px",
@@ -161,8 +161,8 @@ export default function OrganisationPage() {
                 <div>
                   <h2 style={{
                     fontSize: "1.5rem",
-                    color: "#0d4d41",
-                    borderBottom: "2px solid #0d4d41",
+                    color: "var(--brand-2)",
+                    borderBottom: "2px solid var(--brand-2)",
                     paddingBottom: "8px",
                     marginBottom: "16px"
                   }}>
@@ -187,8 +187,8 @@ export default function OrganisationPage() {
                           {item.code && (
                             <span style={{
                               marginLeft: "8px",
-                              background: "#0d4d41",
-                              color: "#fff",
+                              background: "var(--accent)",
+                              color: "var(--background)",
                               fontSize: "0.75rem",
                               padding: "2px 6px",
                               borderRadius: "4px",

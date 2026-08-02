@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Icon } from "@/components/Icon";
 import { CmsImage } from "@/components/CmsImage";
 import { useApp } from "@/components/Providers";
@@ -15,7 +15,36 @@ export function Header() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
+  // Close on Escape key press
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open]);
+
+  // Lock body scroll when navigation drawer is open on mobile
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
   if (pathname.startsWith("/admin")) return null;
+
+  const menuLabel = open
+    ? (language === "bm" ? "Tutup menu navigasi" : "Close navigation menu")
+    : (language === "bm" ? "Buka menu navigasi" : "Open navigation menu");
 
   return <>
     <a className="skip-link" href="#main-content">Skip to content</a>
@@ -40,10 +69,18 @@ export function Header() {
           <button className="icon-button" onClick={toggleTheme} aria-label={theme === "dark" ? labels.lightMode : labels.darkMode}><Icon name={theme === "dark" ? "sun" : "moon"}/></button>
           <Link href="/permohonan" className="button button--small button--outline"><Icon name="briefcase" size={17}/>{language === "bm" ? "Permohonan Saya" : "My Applications"}</Link>
           <Link href="/admin" className="button button--small button--outline"><Icon name="user" size={17}/>{labels.admin}</Link>
-          <button className="menu-button" onClick={() => setOpen(!open)} aria-label={open ? labels.closeMenu : labels.openMenu}><Icon name={open ? "close" : "menu"}/></button>
+          <button
+            className="menu-button"
+            onClick={() => setOpen(!open)}
+            aria-label={menuLabel}
+            aria-expanded={open}
+            aria-controls="navigation-menu"
+          >
+            <Icon name={open ? "close" : "menu"}/>
+          </button>
         </div>
       </div>
-      <nav className={`nav ${open ? "nav--open" : ""}`}>
+      <nav id="navigation-menu" className={`nav ${open ? "nav--open" : ""}`}>
         <div className="container nav__inner">
           {content.navigation.filter((item) => item.enabled).map((item) => <Link key={item.id} href={item.href} onClick={() => setOpen(false)} className={item.href === "/" ? pathname === "/" ? "active" : "" : pathname.startsWith(item.href) ? "active" : ""}>{t(item.label, language)}</Link>)}
         </div>

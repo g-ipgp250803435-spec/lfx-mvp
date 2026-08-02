@@ -22,21 +22,21 @@ export function renderFormattedText(text: string) {
 
     if (trimmed.startsWith("### ")) {
       return (
-        <h3 key={i} style={{ color: "#0d4d41", marginTop: "20px", marginBottom: "10px", fontSize: "1.2rem", fontWeight: "bold" }}>
+        <h3 key={i} style={{ color: "var(--brand-2)", marginTop: "20px", marginBottom: "10px", fontSize: "1.2rem", fontWeight: "bold" }}>
           {trimmed.slice(4)}
         </h3>
       );
     }
     if (trimmed.startsWith("## ")) {
       return (
-        <h2 key={i} style={{ color: "#0d4d41", marginTop: "24px", marginBottom: "12px", fontSize: "1.4rem", fontWeight: "bold" }}>
+        <h2 key={i} style={{ color: "var(--brand-2)", marginTop: "24px", marginBottom: "12px", fontSize: "1.4rem", fontWeight: "bold" }}>
           {trimmed.slice(3)}
         </h2>
       );
     }
     if (trimmed.startsWith("# ")) {
       return (
-        <h1 key={i} style={{ color: "#0d4d41", marginTop: "28px", marginBottom: "16px", fontSize: "1.6rem", fontWeight: "bold" }}>
+        <h1 key={i} style={{ color: "var(--brand-2)", marginTop: "28px", marginBottom: "16px", fontSize: "1.6rem", fontWeight: "bold" }}>
           {trimmed.slice(2)}
         </h1>
       );
@@ -73,7 +73,7 @@ export function renderFormattedText(text: string) {
             className="text-link"
             target="_blank"
             rel="noreferrer"
-            style={{ textDecoration: "underline", color: "#0d4d41", fontWeight: "bold" }}
+            style={{ textDecoration: "underline", color: "var(--brand-2)", fontWeight: "bold" }}
           >
             {label}
           </a>
