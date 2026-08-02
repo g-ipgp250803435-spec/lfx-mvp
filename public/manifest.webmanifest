@@ -1,10 +1,10 @@
 {
-  "name": "LEGASI FINANCE X",
-  "short_name": "LFX",
+  "name": "Hab Perbendaharaan Digital",
+  "short_name": "HiPER",
   "description": "One platform. All Treasury Office affairs.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#071f1b",
-  "theme_color": "#071f1b",
+  "background_color": "#16080c",
+  "theme_color": "#16080c",
   "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
 }

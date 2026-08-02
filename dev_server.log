@@ -5,8 +5,16 @@
 ▲ Next.js 16.2.12 (Turbopack)
 - Local:         http://localhost:3000
 - Network:       http://192.168.0.2:3000
-✓ Ready in 551ms
+✓ Ready in 630ms
 
 ○ Compiling / ...
- GET / 200 in 4.2s (next.js: 3.6s, application-code: 550ms)
- GET / 200 in 74ms (next.js: 4ms, application-code: 70ms)
+ GET / 200 in 4.1s (next.js: 3.6s, application-code: 545ms)
+ GET /admin 200 in 1054ms (next.js: 897ms, application-code: 156ms)
+[browser] Image with src "/lfx-mark.svg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+ GET / 200 in 208ms (next.js: 14ms, application-code: 194ms)
+ GET / 200 in 91ms (next.js: 5ms, application-code: 86ms)
+ GET /admin 200 in 119ms (next.js: 6ms, application-code: 113ms)
+[browser] Image with src "/lfx-mark.svg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+ GET / 200 in 85ms (next.js: 4ms, application-code: 81ms)

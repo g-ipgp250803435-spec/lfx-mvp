@@ -8,12 +8,12 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: { default: "LEGASI FINANCE X", template: "%s · LFX" },
+  title: { default: "Hab Perbendaharaan Digital", template: "%s · HiPER" },
   description: "One platform. All Treasury Office affairs.",
-  applicationName: "LEGASI FINANCE X",
+  applicationName: "Hab Perbendaharaan Digital",
   manifest: "/manifest.webmanifest",
   icons: { icon: "/favicon.svg" },
-  openGraph: { title: "LEGASI FINANCE X", description: "One platform. All Treasury Office affairs.", type: "website", siteName: "LFX" }
+  openGraph: { title: "Hab Perbendaharaan Digital", description: "One platform. All Treasury Office affairs.", type: "website", siteName: "HiPER" }
 };
 
 export const viewport: Viewport = { themeColor: "#16080c", colorScheme: "light dark" };
