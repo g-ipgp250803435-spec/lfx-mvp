@@ -12,7 +12,7 @@ const TABLES = {
   loans: ["loan_id", "asset_id", "user_id", "purpose", "request_date", "approved_by", "status", "qr_code_url", "date_borrowed", "date_returned_expected", "date_returned_actual", "rejection_reason"],
   ikes: ["application_id", "user_id", "type", "amount_requested", "ticket_proof_url", "status", "request_date", "approved_by", "notes", "amount_approved", "repayment_term_days", "decision_date", "payment_date", "repayment_due_date", "amount_repaid", "outstanding_amount", "is_overdue", "rejection_reason", "intake", "class_name", "phone_number", "bank_account_number", "bank_name"],
   tabung: ["record_id", "type", "amount", "date", "description", "recorded_by", "recipient"],
-  announcements: ["announcement_id", "title", "content", "category", "attachment_url", "publish_date", "created_by", "responsible_officer"],
+  announcements: ["announcement_id", "title", "content", "category", "attachment_url", "publish_date", "created_by", "responsible_officer", "image_url"],
   audit: ["timestamp", "user_id", "action", "details"],
   content: ["content_key", "json_content", "updated_at", "updated_by"]
 };
@@ -63,6 +63,7 @@ function doPost(e) {
       case "ikes/approve": return json_({ ok: true, data: withLock_(() => decideIkes_(body)) });
       case "ikes/status": return json_({ ok: true, data: withLock_(() => updateIkesStatus_(body)) });
       case "tabung/record": return json_({ ok: true, data: withLock_(() => recordTabung_(body)) });
+      case "tabung/delete": return json_({ ok: true, data: withLock_(() => deleteTabung_(body)) });
       case "announcements/saveAll": return json_({ ok: true, data: withLock_(() => saveAnnouncements_(body)) });
       case "organisation/saveAll": return json_({ ok: true, data: withLock_(() => saveOrganisationItems_(body)) });
       case "content/save": return json_({ ok: true, data: withLock_(() => saveSiteContent_(body)) });
@@ -468,6 +469,34 @@ function recordTabung_(body) {
   return record;
 }
 
+function deleteTabung_(body) {
+  const admin = requireAdmin_(body.idToken);
+  const recordId = required_(body.record_id, "record_id");
+  const record = findBy_("tbl_tabung", "record_id", recordId);
+  if (!record) throw new Error("Record not found.");
+
+  const success = deleteBy_("tbl_tabung", "record_id", recordId);
+  if (!success) throw new Error("Failed to delete record.");
+
+  audit_(admin.email, "TABUNG_DELETED", { record_id: recordId, description: record.description, amount: record.amount });
+  return { success: true };
+}
+
+function deleteBy_(name, key, value) {
+  const sheet = sheet_(name);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0].map(String);
+  const keyIndex = headers.indexOf(key);
+  if (keyIndex < 0) throw new Error("Column " + key + " not found in " + name + ".");
+  for (let row = 1; row < data.length; row++) {
+    if (String(normaliseCell_(data[row][keyIndex])) === String(value)) {
+      sheet.deleteRow(row + 1);
+      return true;
+    }
+  }
+  return false;
+}
+
 function listAnnouncements_() {
   return rows_("tbl_announcements").map((item) => Object.assign({}, item, {
     title: parseLocalized_(item.title), content: parseLocalized_(item.content)
@@ -481,7 +510,8 @@ function saveAnnouncements_(body) {
     announcement_id: clean_(item.announcement_id) || makeId_("ANN"),
     title: JSON.stringify(item.title || { bm: "", en: "" }), content: JSON.stringify(item.content || { bm: "", en: "" }),
     category: clean_(item.category), attachment_url: clean_(item.attachment_url), publish_date: clean_(item.publish_date) || today_(),
-    created_by: clean_(item.created_by) || admin.email, responsible_officer: clean_(item.responsible_officer)
+    created_by: clean_(item.created_by) || admin.email, responsible_officer: clean_(item.responsible_officer),
+    image_url: clean_(item.image_url)
   }));
   replaceRows_("tbl_announcements", cleaned);
   audit_(admin.email, "ANNOUNCEMENTS_SAVED", { count: cleaned.length });
@@ -570,7 +600,8 @@ function uploadFile_(body) {
   const bytes = Utilities.base64Decode(base64Data);
   const size = bytes.length;
 
-  if (size > 2.5 * 1024 * 1024) throw new Error("File is too large. Maximum 2.5 MB.");
+  const limit = (purpose === "announcement_image") ? 10 * 1024 * 1024 : 2.5 * 1024 * 1024;
+  if (size > limit) throw new Error("File is too large. Maximum " + (limit / (1024 * 1024)) + " MB.");
 
   // SVG security sanitization/check
   if (mimeType === "image/svg+xml" || mimeType.indexOf("xml") !== -1) {
@@ -592,7 +623,8 @@ function uploadFile_(body) {
       asset_image: ["image/png", "image/jpeg", "image/webp"],
       donation_qr: ["image/png", "image/jpeg", "image/webp"],
       officer_photo: ["image/svg+xml", "image/png", "image/jpeg", "image/webp"],
-      announcement_pdf: ["application/pdf"]
+      announcement_pdf: ["application/pdf"],
+      announcement_image: ["image/png", "image/jpeg"]
     };
     const list = allowed[purpose];
     if (list && list.indexOf(mimeType) === -1) {
