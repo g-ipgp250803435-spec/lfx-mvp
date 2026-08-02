@@ -364,7 +364,7 @@ export function AdminStudio() {
     }, language === "bm" ? "Kandungan organisasi berjaya disimpan." : "Organisation content saved.");
   };
 
-  if (!user || !session) return <div className="admin-login"><div className="admin-login__panel"><Image src="/lfx-mark.svg" alt="LFX" width={90} height={90}/><span className="eyebrow">LFX Secure Access</span><h1>Content & Operations Studio</h1><p>{language === "bm" ? "Log masuk menggunakan akaun Google kampus yang disenaraikan sebagai ADMIN dalam tbl_users." : "Sign in using a campus Google account listed as ADMIN in tbl_users."}</p><GoogleAuth onUser={setUser}/>{checking && <p className="muted">Verifying role…</p>}<FlashMessage flash={flash}/></div></div>;
+  if (!user || !session) return <div className="admin-login"><div className="admin-login__panel"><Image src="/lfx-mark.svg" alt="HiPER" width={90} height={90}/><span className="eyebrow">HiPER Secure Access</span><h1>Content & Operations Studio</h1><p>{language === "bm" ? "Log masuk menggunakan akaun Google kampus yang disenaraikan sebagai ADMIN dalam tbl_users." : "Sign in using a campus Google account listed as ADMIN in tbl_users."}</p><GoogleAuth onUser={setUser}/>{checking && <p className="muted">Verifying role…</p>}<FlashMessage flash={flash}/></div></div>;
 
   const tabs: Array<{ id: Tab; icon: string; bm: string; en: string }> = [
     { id: "overview", icon: "chart", bm: "Ringkasan", en: "Overview" },
@@ -377,7 +377,7 @@ export function AdminStudio() {
   ];
 
   return <div className="admin-shell">
-    <aside className="admin-sidebar"><div className="admin-brand"><Image src="/lfx-mark.svg" alt="LFX" width={52} height={52}/><span><strong>LFX Studio</strong><small>{session.email}</small></span></div><nav>{tabs.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => { setTab(item.id); setFlash(null); }}><Icon name={item.icon}/>{language === "bm" ? item.bm : item.en}</button>)}</nav><Link href="/" className="admin-back"><Icon name="arrow" size={17}/>{language === "bm" ? "Lihat portal" : "View portal"}</Link></aside>
+    <aside className="admin-sidebar"><div className="admin-brand"><Image src="/lfx-mark.svg" alt="HiPER" width={52} height={52}/><span><strong>HiPER Studio</strong><small>{session.email}</small></span></div><nav>{tabs.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => { setTab(item.id); setFlash(null); }}><Icon name={item.icon}/>{language === "bm" ? item.bm : item.en}</button>)}</nav><Link href="/" className="admin-back"><Icon name="arrow" size={17}/>{language === "bm" ? "Lihat portal" : "View portal"}</Link></aside>
     <main className="admin-main"><header className="admin-topbar"><div><span className="eyebrow">Office Operating System</span><h1>{tabs.find((item) => item.id === tab)?.[language]}</h1></div><span className="mode-pill">{isDemoMode ? "DEMO" : "LIVE"}</span></header><FlashMessage flash={flash}/>
       {tab === "overview" && <Overview assets={assets} loans={loans} ikes={ikes} tabung={tabung}/>} 
       {tab === "content" && <ContentEditor content={content} setContent={setContent} onSave={saveContent} idToken={user?.idToken || ""} busy={busy}/>}
@@ -1210,12 +1210,12 @@ function IkesAdmin({
           padding: "16px"
         }}>
           <div style={{
-            backgroundColor: "var(--bg)",
-            color: "var(--text)",
+            backgroundColor: "var(--surface)",
+            color: "var(--text-primary)",
             borderRadius: "8px",
             width: "100%",
             maxWidth: "650px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            boxShadow: "var(--shadow)",
             padding: "24px",
             maxHeight: "90vh",
             overflowY: "auto",

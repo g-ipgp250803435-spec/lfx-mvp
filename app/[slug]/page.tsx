@@ -22,7 +22,7 @@ export default function CustomPage() {
 
   return (
     <>
-      <PageHero eyebrow={{ bm: "LEGASI FINANCE X", en: "LEGASI FINANCE X" }} title={page.title} description={page.summary} />
+      <PageHero eyebrow={{ bm: "Hab Perbendaharaan Digital", en: "Hab Perbendaharaan Digital" }} title={page.title} description={page.summary} />
       <section className="section">
         <div className="container container--narrow content-page">
           {page.heroImage && (

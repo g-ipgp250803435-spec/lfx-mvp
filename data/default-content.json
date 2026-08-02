@@ -1,7 +1,7 @@
 {
   "site": {
-    "name": "LEGASI FINANCE X",
-    "shortName": "LFX",
+    "name": "Hab Perbendaharaan Digital",
+    "shortName": "HiPER",
     "tagline": {
       "bm": "Satu platform. Semua urusan Pejabat Bendahari.",
       "en": "One platform. All Treasury Office affairs."
@@ -104,8 +104,8 @@
   },
   "footer": {
     "about": {
-      "bm": "LEGASI FINANCE X ialah sistem operasi digital Pejabat Yang Berhormat Bendahari Agung.",
-      "en": "LEGASI FINANCE X is the digital operating system of the Office of the Honourable Treasurer-General."
+      "bm": "Hab Perbendaharaan Digital ialah sistem operasi digital Pejabat Yang Berhormat Bendahari Agung.",
+      "en": "Hab Perbendaharaan Digital is the digital operating system of the Office of the Honourable Treasurer-General."
     },
     "address": "Majlis Perwakilan Pelajar, Institut Pendidikan Guru",
     "links": [
@@ -144,13 +144,13 @@
       "id": "page-privacy",
       "slug": "privacy",
       "title": { "bm": "Dasar Privasi", "en": "Privacy Policy" },
-      "summary": { "bm": "Cara LFX mengendalikan data pengguna.", "en": "How LFX handles user data." },
+      "summary": { "bm": "Cara HiPER mengendalikan data pengguna.", "en": "How HiPER handles user data." },
       "published": true,
       "sections": [
         {
           "id": "privacy-1",
           "heading": { "bm": "Prinsip data", "en": "Data principles" },
-          "body": { "bm": "LFX hanya mengumpul data yang diperlukan untuk mengurus permohonan, kelulusan dan rekod audit. Akses dihadkan mengikut peranan.", "en": "LFX only collects data needed to manage applications, approvals and audit records. Access is restricted by role." }
+          "body": { "bm": "HiPER hanya mengumpul data yang diperlukan untuk mengurus permohonan, kelulusan dan rekod audit. Akses dihadkan mengikut peranan.", "en": "HiPER only collects data needed to manage applications, approvals and audit records. Access is restricted by role." }
         }
       ]
     }

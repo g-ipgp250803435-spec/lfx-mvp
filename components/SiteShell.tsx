@@ -58,7 +58,7 @@ export function Header() {
     <header className="header">
       <div className="container header__main">
         <Link href="/" className="brand">
-          <CmsImage src={content.site.logoUrl || "/lfx-mark.svg"} alt="LFX" width={54} height={54} loading="eager"/>
+          <CmsImage src={content.site.logoUrl || "/lfx-mark.svg"} alt="HiPER" width={54} height={54} loading="eager"/>
           <span><strong>{content.site.shortName}</strong><small>{t(content.site.tagline, language)}</small></span>
         </Link>
         <div className="header__actions">
@@ -96,10 +96,10 @@ export function Footer() {
   if (pathname.startsWith("/admin")) return null;
   return <footer className="footer">
     <div className="container footer__grid">
-      <div className="footer__brand"><CmsImage src={content.site.logoUrl || "/lfx-mark.svg"} alt="LFX" width={68} height={68}/><div><strong>{content.site.name}</strong><p>{t(content.footer.about, language)}</p></div></div>
+      <div className="footer__brand"><CmsImage src={content.site.logoUrl || "/lfx-mark.svg"} alt="HiPER" width={68} height={68}/><div><strong>{content.site.name}</strong><p>{t(content.footer.about, language)}</p></div></div>
       <div><h3>{language === "bm" ? "Pautan" : "Links"}</h3>{content.footer.links.filter((item) => item.enabled).map((item) => <Link key={item.id} href={item.href}>{t(item.label, language)}</Link>)}</div>
       <div><h3>{language === "bm" ? "Hubungi" : "Contact"}</h3><p>{content.footer.address}</p><a href={`mailto:${content.site.officialEmail}`}>{content.site.officialEmail}</a></div>
     </div>
-    <div className="container footer__bottom"><span>© {new Date().getFullYear()} {t(content.footer.copyright, language)}</span><span>LEGASI FINANCE X · v1.0</span></div>
+    <div className="container footer__bottom"><span>© {new Date().getFullYear()} {t(content.footer.copyright, language)}</span><span>Hab Perbendaharaan Digital · v1.0</span></div>
   </footer>;
 }

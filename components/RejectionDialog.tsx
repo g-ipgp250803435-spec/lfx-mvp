@@ -138,12 +138,12 @@ export function RejectionDialog({
         aria-labelledby="rejection-dialog-title"
         onKeyDown={handleTabTrap}
         style={{
-          backgroundColor: "var(--bg)",
-          color: "var(--text)",
+          backgroundColor: "var(--surface)",
+          color: "var(--text-primary)",
           borderRadius: "8px",
           width: "100%",
           maxWidth: "500px",
-          boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
+          boxShadow: "var(--shadow)",
           padding: "24px",
           border: "1px solid var(--line)"
         }}
@@ -176,7 +176,7 @@ export function RejectionDialog({
                 borderRadius: "4px",
                 border: "1px solid var(--line)",
                 background: "var(--soft-bg)",
-                color: "var(--text)",
+                color: "var(--text-primary)",
                 fontSize: "0.9rem",
                 fontFamily: "inherit"
               }}
