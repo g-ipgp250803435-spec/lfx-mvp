@@ -152,7 +152,7 @@ export function IkesForm() {
         <input required type="text" placeholder="e.g. 162106292837" value={bankAccountNumber} onChange={(e) => setBankAccountNumber(e.target.value)}/>
       </label>
 
-      <div className="form-grid__wide privacy-text" style={{ fontSize: "0.85rem", color: "#666", marginTop: "4px", marginBottom: "8px", borderLeft: "3px solid #0d4d41", paddingLeft: "8px" }}>
+      <div className="form-grid__wide privacy-text" style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "4px", marginBottom: "8px", borderLeft: "3px solid var(--accent)", paddingLeft: "8px" }}>
         {language === "bm"
           ? "Maklumat akaun bank anda hanya akan digunakan untuk tujuan memproses pembayaran iKES yang diluluskan."
           : "Your bank account details will only be used for the purpose of processing approved iKES payments."}

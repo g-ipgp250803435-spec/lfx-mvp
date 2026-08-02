@@ -74,7 +74,7 @@ export default function CustomPage() {
                       marginBottom: "24px"
                     }}
                   >
-                    <h3 style={{ color: "#0d4d41", margin: 0 }}>{t(block.title, language)}</h3>
+                    <h3 style={{ color: "var(--brand-2)", margin: 0 }}>{t(block.title, language)}</h3>
                     {block.description && <p style={{ margin: 0, fontSize: "0.95rem" }}>{t(block.description, language)}</p>}
                     <a
                       className={`button ${block.variant === "secondary" ? "button--outline" : ""}`}
@@ -100,7 +100,7 @@ export default function CustomPage() {
                           cursor: "pointer"
                         }}
                       >
-                        <summary style={{ fontWeight: "bold", color: "#0d4d41", userSelect: "none" }}>
+                        <summary style={{ fontWeight: "bold", color: "var(--brand-2)", userSelect: "none" }}>
                           {t(item.question, language)}
                         </summary>
                         <div style={{ marginTop: "12px", borderTop: "1px dashed var(--line)", paddingTop: "12px", cursor: "default" }}>
@@ -126,7 +126,7 @@ export default function CustomPage() {
                     }}
                   >
                     {block.title && (
-                      <h3 style={{ color: "#0d4d41", margin: "0 0 16px 0", fontSize: "1.1rem" }}>
+                      <h3 style={{ color: "var(--brand-2)", margin: "0 0 16px 0", fontSize: "1.1rem" }}>
                         {t(block.title, language)}
                       </h3>
                     )}

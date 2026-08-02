@@ -686,7 +686,7 @@ function ContentEditor({ content, setContent, onSave, busy, idToken }: { content
 
               {/* Block List Editor */}
               <div style={{ marginTop: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
-                <h4 style={{ color: "#0d4d41", borderBottom: "1px solid var(--line)", paddingBottom: "8px", margin: 0 }}>
+                <h4 style={{ color: "var(--brand-2)", borderBottom: "1px solid var(--line)", paddingBottom: "8px", margin: 0 }}>
                   Page Blocks ({blocks.length})
                 </h4>
 
@@ -718,7 +718,7 @@ function ContentEditor({ content, setContent, onSave, busy, idToken }: { content
                           paddingBottom: "8px"
                         }}
                       >
-                        <strong style={{ textTransform: "uppercase", fontSize: "0.8rem", color: "#0d4d41" }}>
+                        <strong style={{ textTransform: "uppercase", fontSize: "0.8rem", color: "var(--brand-2)" }}>
                           Block #{bIndex + 1}: {block.type}
                         </strong>
                         <div style={{ display: "flex", gap: "8px" }}>
@@ -1073,7 +1073,7 @@ function IkesAdmin({
                       width: "100%"
                     }}
                   >
-                    <strong style={{ textDecoration: "underline", color: "#0d4d41" }}>
+                    <strong style={{ textDecoration: "underline", color: "var(--brand-2)" }}>
                       {item.user_name || item.user_id}
                     </strong>
                   </button>
@@ -1244,7 +1244,7 @@ function IkesAdmin({
               <div>
                 <h4 style={{
                   fontSize: "1rem",
-                  color: "#0d4d41",
+                  color: "var(--brand-2)",
                   borderBottom: "1px solid var(--line)",
                   paddingBottom: "4px",
                   marginBottom: "12px",
@@ -1290,7 +1290,7 @@ function IkesAdmin({
               <div>
                 <h4 style={{
                   fontSize: "1rem",
-                  color: "#0d4d41",
+                  color: "var(--brand-2)",
                   borderBottom: "1px solid var(--line)",
                   paddingBottom: "4px",
                   marginBottom: "12px",
@@ -1310,7 +1310,7 @@ function IkesAdmin({
                       {language === "bm" ? "Nombor Akaun Bank" : "Bank Account Number"}
                     </span>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", wordBreak: "break-all" }}>
-                      <strong style={{ fontSize: "1rem", color: "#0d4d41" }}>
+                      <strong style={{ fontSize: "1rem", color: "var(--brand-2)" }}>
                         {selectedApp.bank_account_number || selectedApp.bank_account_masked || "—"}
                       </strong>
                       {(selectedApp.bank_account_number || selectedApp.bank_account_masked) && (
@@ -1347,7 +1347,7 @@ function IkesAdmin({
               <div>
                 <h4 style={{
                   fontSize: "1rem",
-                  color: "#0d4d41",
+                  color: "var(--brand-2)",
                   borderBottom: "1px solid var(--line)",
                   paddingBottom: "4px",
                   marginBottom: "12px",
@@ -1383,7 +1383,7 @@ function IkesAdmin({
                         href={selectedApp.ticket_proof_url}
                         target="_blank"
                         rel="noreferrer"
-                        style={{ textDecoration: "underline", color: "#0d4d41", fontWeight: "bold" }}
+                        style={{ textDecoration: "underline", color: "var(--brand-2)", fontWeight: "bold" }}
                       >
                         {language === "bm" ? "Lihat Bukti Tiket" : "View Ticket Proof"}
                       </a>
@@ -1406,7 +1406,7 @@ function IkesAdmin({
               <div>
                 <h4 style={{
                   fontSize: "1rem",
-                  color: "#0d4d41",
+                  color: "var(--brand-2)",
                   borderBottom: "1px solid var(--line)",
                   paddingBottom: "4px",
                   marginBottom: "12px",

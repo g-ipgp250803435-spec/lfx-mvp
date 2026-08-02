@@ -81,12 +81,12 @@ export function TabungChart({ records }: { records: TabungRecord[] }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h3 style={{ fontSize: "1.1rem", margin: 0, color: "#0d4d41" }}>
+        <h3 style={{ fontSize: "1.1rem", margin: 0, color: "var(--brand-2)" }}>
           {language === "bm" ? "Trend Bulanan Tabung Jumaat" : "Monthly Tabung Jumaat Trend"}
         </h3>
         <div style={{ display: "flex", gap: "12px", fontSize: "0.8rem" }}>
           <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-            <span style={{ width: "12px", height: "12px", background: "#0d4d41", display: "inline-block", borderRadius: "2px" }} />
+            <span style={{ width: "12px", height: "12px", background: "var(--accent)", display: "inline-block", borderRadius: "2px" }} />
             {language === "bm" ? "Kutipan" : "Collections"}
           </span>
           <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
@@ -134,7 +134,7 @@ export function TabungChart({ records }: { records: TabungRecord[] }) {
                 y={140 - colHeight}
                 width={barWidth}
                 height={colHeight}
-                fill="#0d4d41"
+                fill="var(--accent)"
                 rx="2"
               />
               <text x={startX + barWidth / 2} y={135 - colHeight} textAnchor="middle" fontSize="8" fontWeight="bold" fill="var(--text)">
@@ -223,7 +223,7 @@ export function AssetUtilisationChart({ assets }: { assets: Asset[] }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-      <h3 style={{ fontSize: "1.1rem", margin: 0, color: "#0d4d41" }}>
+      <h3 style={{ fontSize: "1.1rem", margin: 0, color: "var(--brand-2)" }}>
         {language === "bm" ? "Status Ketersediaan iAset" : "iAset Availability Status"}
       </h3>
 

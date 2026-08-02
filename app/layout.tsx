@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   openGraph: { title: "LEGASI FINANCE X", description: "One platform. All Treasury Office affairs.", type: "website", siteName: "LFX" }
 };
 
-export const viewport: Viewport = { themeColor: "#071f1b", colorScheme: "light dark" };
+export const viewport: Viewport = { themeColor: "#16080c", colorScheme: "light dark" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <html lang="ms" suppressHydrationWarning><body><Providers><ContentProvider><Header/><main id="main-content">{children}</main><Footer/></ContentProvider></Providers></body></html>;

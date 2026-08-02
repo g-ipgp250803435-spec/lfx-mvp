@@ -149,7 +149,7 @@ export function RejectionDialog({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 id="rejection-dialog-title" style={{ margin: 0, fontSize: "1.25rem", color: "#0d4d41" }}>
+        <h3 id="rejection-dialog-title" style={{ margin: 0, fontSize: "1.25rem", color: "var(--brand-2)" }}>
           {title}
         </h3>
 
@@ -214,7 +214,7 @@ export function RejectionDialog({
               type="submit"
               disabled={busy}
               className="button"
-              style={{ padding: "8px 16px", backgroundColor: "#913737", borderColor: "#913737", color: "#fff" }}
+              style={{ padding: "8px 16px", backgroundColor: "var(--danger)", borderColor: "var(--danger)", color: "#fff" }}
             >
               {busy ? (language === "bm" ? "Memproses..." : "Processing...") : (language === "bm" ? "Tolak" : "Reject")}
             </button>

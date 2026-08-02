@@ -5,7 +5,8 @@
 ▲ Next.js 16.2.12 (Turbopack)
 - Local:         http://localhost:3000
 - Network:       http://192.168.0.2:3000
-✓ Ready in 543ms
+✓ Ready in 551ms
 
-○ Compiling /organisation ...
- GET /organisation 200 in 4.3s (next.js: 3.7s, application-code: 562ms)
+○ Compiling / ...
+ GET / 200 in 4.2s (next.js: 3.6s, application-code: 550ms)
+ GET / 200 in 74ms (next.js: 4ms, application-code: 70ms)
