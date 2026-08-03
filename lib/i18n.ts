@@ -7,7 +7,7 @@ export function t(value: LocalizedText | string | undefined, language: Language)
 
 export const ui = {
   bm: {
-    portal: "Portal rasmi perbendaharaan MPP",
+    portal: "Portal rasmi perbendaharaan JPP IPGKKB",
     openMenu: "Buka menu",
     closeMenu: "Tutup menu",
     darkMode: "Mod gelap",

@@ -2,7 +2,7 @@
 
 import { fallbackContent } from "@/lib/content";
 import { mockAnnouncements, mockAssets, mockIkes, mockLoans, mockTabung } from "@/data/mock";
-import type { Announcement, Asset, IkesApplication, Loan, SiteContent, TabungRecord, OrgItem } from "@/lib/types";
+import type { Announcement, Asset, IkesApplication, Loan, SiteContent, TabungRecord, OrgItem, OrgOfficer } from "@/lib/types";
 
 const keys = {
   content: "lfx-demo-content",
@@ -48,7 +48,43 @@ export const demoStore = {
   saveTabung: (value: TabungRecord[]) => write(keys.tabung, value),
   getAnnouncements: () => read<Announcement[]>(keys.announcements, mockAnnouncements),
   saveAnnouncements: (value: Announcement[]) => write(keys.announcements, value),
-  getOrganisationItems: () => read<OrgItem[]>(keys.organisationItems, defaultOrgItems),
-  saveOrganisationItems: (value: OrgItem[]) => write(keys.organisationItems, value),
+  getOrganisationItems: () => {
+    const raw = read<{ items: OrgItem[]; officers: OrgOfficer[] } | null>(keys.organisationItems, null);
+    const defaultItems = defaultOrgItems;
+    const defaultOfficers: OrgOfficer[] = [
+      {
+        id: "officer-1",
+        name: "Muhammad Haris Bin Azman",
+        position: "Bendahari Agung Kehormat",
+        photoUrl: "",
+        unitId: "org-1",
+        sortOrder: 1,
+        isActive: true,
+        email: "haris@student.ipgm.edu.my",
+        responsibilities: "Mengetuai Pejabat Bendahari Agung, menetapkan belanjawan tahunan, dan mengurus akaun rasmi JPP IPGKKB."
+      },
+      {
+        id: "officer-2",
+        name: "Nur Aisya Binti Mohd Ridzuan",
+        position: "Naib Bendahari Agung Kehormat",
+        photoUrl: "",
+        unitId: "org-2",
+        sortOrder: 1,
+        isActive: true,
+        email: "aisya@student.ipgm.edu.my",
+        responsibilities: "Membantu pengurusan belanjawan harian, menyelia program iKES dan iAset, serta menyediakan laporan bulanan."
+      }
+    ];
+    if (!raw) {
+      return { items: defaultItems, officers: defaultOfficers };
+    }
+    if (Array.isArray(raw)) {
+      return { items: raw, officers: defaultOfficers };
+    }
+    if (!raw.items) raw.items = defaultItems;
+    if (!raw.officers) raw.officers = defaultOfficers;
+    return raw;
+  },
+  saveOrganisationItems: (value: { items: OrgItem[]; officers: OrgOfficer[] }) => write(keys.organisationItems, value),
   reset: () => Object.values(keys).forEach((key) => localStorage.removeItem(key))
 };

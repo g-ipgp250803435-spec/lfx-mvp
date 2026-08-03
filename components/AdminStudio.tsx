@@ -54,15 +54,19 @@ export function AdminStudio() {
   const [rejectingIkesId, setRejectingIkesId] = useState<string | null>(null);
 
   const [organisationItems, setOrganisationItems] = useState<OrgItem[]>([]);
+  const [organisationOfficers, setOrganisationOfficers] = useState<any[]>([]);
 
   const loadOrgItems = useCallback(async () => {
     try {
       if (isDemoMode) {
-        setOrganisationItems((demoStore.getOrganisationItems() || []).map(normalizeOrgItem));
+        const data = demoStore.getOrganisationItems() as any;
+        setOrganisationItems((data.items || []).map(normalizeOrgItem));
+        setOrganisationOfficers(data.officers || []);
       } else {
-        const res = await apiGet<OrgItem[]>("organisation/get");
+        const res = await apiGet<any>("organisation/get");
         if (res.ok && res.data) {
-          setOrganisationItems((res.data || []).map(normalizeOrgItem));
+          setOrganisationItems((res.data.items || []).map(normalizeOrgItem));
+          setOrganisationOfficers(res.data.officers || []);
         }
       }
     } catch (e) {
@@ -313,6 +317,21 @@ export function AdminStudio() {
     }, `Repayment of RM${amt.toFixed(2)} recorded.`);
   };
 
+  const ikesDelete = (applicationId: string) => run(async () => {
+    try {
+      if (isDemoMode) {
+        const next = ikes.filter((item) => item.application_id !== applicationId);
+        setIkes(next); demoStore.saveIkes(next);
+      } else if (user) {
+        await apiPost("ikes/delete", { idToken: user.idToken, application_id: applicationId });
+        const next = ikes.filter((item) => item.application_id !== applicationId);
+        setIkes(next);
+      }
+    } catch {
+      throw new Error(language === "bm" ? "Rekod permohonan tidak dapat dipadamkan. Sila cuba lagi." : "iKES record could not be deleted. Please try again.");
+    }
+  }, language === "bm" ? "Rekod permohonan iKES berjaya dipadamkan." : "iKES application record successfully deleted.");
+
   const saveTabungRecord = (record: Omit<TabungRecord, "record_id" | "recorded_by">) => run(async () => {
     if (isDemoMode) {
       const next = [{ ...record, record_id: uid("TBG"), recorded_by: user?.email || "demo.admin@ipg.edu.my" }, ...tabung];
@@ -336,7 +355,7 @@ export function AdminStudio() {
     else if (user) await apiPost("announcements/saveAll", { idToken: user.idToken, announcements });
   }, language === "bm" ? "Pengumuman disimpan." : "Announcements saved.");
 
-  const saveOrgItems = async (itemsToSave: OrgItem[]) => {
+  const saveOrgItems = async (itemsToSave: OrgItem[], officersToSave: any[]) => {
     return run(async () => {
       // Validate unique codes
       const codes = new Set<string>();
@@ -365,11 +384,17 @@ export function AdminStudio() {
         item_type: item.item_type || item.type || "UNIT"
       }));
 
+      const payload = {
+        items: itemsWithBothFields,
+        officers: officersToSave
+      };
+
       if (isDemoMode) {
-        demoStore.saveOrganisationItems(itemsWithBothFields);
+        demoStore.saveOrganisationItems(payload);
         setOrganisationItems(itemsWithBothFields);
+        setOrganisationOfficers(officersToSave);
       } else if (user) {
-        await apiPost("organisation/saveAll", { idToken: user.idToken, items: itemsWithBothFields });
+        await apiPost("organisation/saveAll", { idToken: user.idToken, payload });
         await loadOrgItems();
       }
     }, language === "bm" ? "Kandungan organisasi berjaya disimpan." : "Organisation content saved.");
@@ -393,10 +418,19 @@ export function AdminStudio() {
       {tab === "overview" && <Overview assets={assets} loans={loans} ikes={ikes} tabung={tabung} busy={busy}/>}
       {tab === "content" && <ContentEditor content={content} setContent={setContent} onSave={saveContent} idToken={user?.idToken || ""} busy={busy}/>}
       {tab === "assets" && <AssetAdmin assets={assets} setAssets={setAssets} loans={loans} onSave={saveAssets} onDecision={loanDecision} onScan={scanLoan} idToken={user?.idToken || ""} busy={busy}/>}
-      {tab === "ikes" && <IkesAdmin applications={ikes} onStatus={ikesDecision} onRepay={ikesRepayment} busy={busy}/>}
+      {tab === "ikes" && <IkesAdmin applications={ikes} onStatus={ikesDecision} onRepay={ikesRepayment} onDelete={ikesDelete} busy={busy}/>}
       {tab === "tabung" && <TabungAdmin records={tabung} onCreate={saveTabungRecord} onDelete={deleteTabungRecord} busy={busy}/>}
       {tab === "announcements" && <AnnouncementAdmin items={announcements} setItems={setAnnouncements} onSave={saveAnnouncements} idToken={user?.idToken || ""} busy={busy}/>}
-      {tab === "organisation" && <OrganisationEditor items={organisationItems} setItems={setOrganisationItems} onSave={saveOrgItems} busy={busy}/>}
+      {tab === "organisation" && (
+        <OrganisationEditor
+          items={organisationItems}
+          setItems={setOrganisationItems}
+          officers={organisationOfficers}
+          setOfficers={setOrganisationOfficers}
+          onSave={saveOrgItems}
+          busy={busy}
+        />
+      )}
     </main>
 
     <RejectionDialog
@@ -1066,16 +1100,21 @@ function IkesAdmin({
   applications,
   onStatus,
   onRepay,
+  onDelete,
   busy
 }: {
   applications: IkesApplication[];
   onStatus: (id: string, status: IkesApplication["status"]) => void;
   onRepay: (id: string) => void;
+  onDelete: (id: string) => Promise<void>;
   busy: boolean;
 }) {
   const { language } = useApp();
   const [selectedApp, setSelectedApp] = useState<IkesApplication | null>(null);
   const [copied, setCopied] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  const appToDelete = applications.find((a) => a.application_id === deleteConfirmId);
 
   return (
     <section className="admin-card">
@@ -1228,6 +1267,17 @@ function IkesAdmin({
                       OVERDUE WARNING
                     </div>
                   )}
+
+                  <button
+                    disabled={busy}
+                    className="danger-icon"
+                    style={{ marginTop: "8px", width: "100%", height: "36px", display: "flex", justifyContent: "center", alignItems: "center", gap: "6px" }}
+                    onClick={() => setDeleteConfirmId(item.application_id)}
+                    title={language === "bm" ? "Padam" : "Delete"}
+                  >
+                    <Icon name="trash" size={16} />
+                    <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>{language === "bm" ? "Padam" : "Delete"}</span>
+                  </button>
                 </span>
               </div>
             );
@@ -1566,6 +1616,51 @@ function IkesAdmin({
           </div>
         </div>
       )}
+
+      {/* Delete confirmation dialog overlay */}
+      {appToDelete && (
+        <div className="modal-backdrop" onClick={() => setDeleteConfirmId(null)} style={{ display: "flex" }}>
+          <div className="officer-modal" onClick={(e) => e.stopPropagation()} style={{ background: "var(--surface)", border: "1px solid var(--line)" }}>
+            <h3 style={{ margin: "0 0 12px 0", font: "600 1.5rem var(--serif)", color: "var(--text-primary)" }}>
+              {language === "bm" ? "Padam rekod permohonan iKES?" : "Delete iKES application record?"}
+            </h3>
+            <p style={{ margin: "16px 0", color: "var(--muted)", fontSize: "0.9rem" }}>
+              {language === "bm"
+                ? "Tindakan ini akan memadamkan rekod permohonan yang dipilih. Tindakan ini tidak boleh dibatalkan."
+                : "This action will delete the selected application record. This action cannot be undone."}
+            </p>
+            <div style={{ margin: "16px 0", textAlign: "left", fontSize: "0.85rem", border: "1px solid var(--line)", padding: "12px", borderRadius: "8px", background: "var(--soft-bg)" }}>
+              <div><strong>{language === "bm" ? "Nama Pemohon:" : "Applicant Name:"}</strong> {appToDelete.user_name || appToDelete.user_id}</div>
+              <div><strong>{language === "bm" ? "Rujukan Permohonan:" : "Application Reference Number:"}</strong> {appToDelete.application_id}</div>
+              <div><strong>{language === "bm" ? "Tarikh Permohonan:" : "Application Date:"}</strong> {formatDate(appToDelete.request_date)}</div>
+              <div><strong>{language === "bm" ? "Status Semasa:" : "Current Status:"}</strong> <StatusBadge status={appToDelete.status} /></div>
+            </div>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginTop: "24px" }}>
+              <button
+                type="button"
+                className="button button--outline"
+                onClick={() => setDeleteConfirmId(null)}
+              >
+                {language === "bm" ? "Batal" : "Cancel"}
+              </button>
+              <button
+                type="button"
+                className="button"
+                style={{ background: "red", borderColor: "red", color: "white" }}
+                onClick={async () => {
+                  await onDelete(appToDelete.application_id);
+                  if (selectedApp?.application_id === appToDelete.application_id) {
+                    setSelectedApp(null);
+                  }
+                  setDeleteConfirmId(null);
+                }}
+              >
+                {language === "bm" ? "Padam Rekod" : "Delete Record"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -1721,15 +1816,23 @@ function AnnouncementAdmin({ items, setItems, onSave, idToken, busy }: { items: 
 function OrganisationEditor({
   items,
   setItems,
+  officers,
+  setOfficers,
   onSave,
   busy
 }: {
   items: OrgItem[];
   setItems: (items: OrgItem[]) => void;
-  onSave: (items: OrgItem[]) => Promise<void>;
+  officers: any[];
+  setOfficers: (officers: any[]) => void;
+  onSave: (items: OrgItem[], officers: any[]) => Promise<void>;
   busy: boolean;
 }) {
-  const add = () => {
+  const { language } = useApp();
+  const [activeSubTab, setActiveSubTab] = useState<"units" | "officers" | "preview">("units");
+
+  // --- UNIT OPERATIONS ---
+  const addUnit = () => {
     const nextSortOrder = items.length > 0 ? Math.max(...items.map(i => i.sort_order)) + 1 : 1;
     setItems([
       ...items,
@@ -1745,13 +1848,13 @@ function OrganisationEditor({
     ]);
   };
 
-  const update = (index: number, patch: Partial<OrgItem>) => {
+  const updateUnit = (index: number, patch: Partial<OrgItem>) => {
     const next = [...items];
     next[index] = { ...next[index], ...patch };
     setItems(next);
   };
 
-  const remove = (index: number) => {
+  const removeUnit = (index: number) => {
     const item = items[index];
     const confirm = window.confirm(`Are you sure you want to remove "${item.title || "this item"}"?`);
     if (confirm) {
@@ -1759,19 +1862,17 @@ function OrganisationEditor({
     }
   };
 
-  const move = (index: number, direction: "up" | "down") => {
+  const moveUnit = (index: number, direction: "up" | "down") => {
     if (direction === "up" && index === 0) return;
     if (direction === "down" && index === items.length - 1) return;
 
     const next = [...items];
     const swapWith = direction === "up" ? index - 1 : index + 1;
 
-    // Swap sort_order values
     const tempOrder = next[index].sort_order;
     next[index].sort_order = next[swapWith].sort_order;
     next[swapWith].sort_order = tempOrder;
 
-    // Swap positions in array
     const temp = next[index];
     next[index] = next[swapWith];
     next[swapWith] = temp;
@@ -1779,141 +1880,636 @@ function OrganisationEditor({
     setItems(next);
   };
 
+  // --- OFFICER OPERATIONS ---
+  const addOfficer = () => {
+    const nextSortOrder = officers.length > 0 ? Math.max(...officers.map(o => o.sortOrder || 1)) + 1 : 1;
+    setOfficers([
+      ...officers,
+      {
+        id: uid("off"),
+        name: "New Officer",
+        position: "Pegawai",
+        photoUrl: "",
+        unitId: items[0]?.id || "",
+        sortOrder: nextSortOrder,
+        isActive: true,
+        email: "officer@student.ipgm.edu.my",
+        responsibilities: "Tanggungjawab kerja pegawai"
+      }
+    ]);
+  };
+
+  const updateOfficer = (index: number, patch: Partial<any>) => {
+    const next = [...officers];
+    next[index] = { ...next[index], ...patch };
+    setOfficers(next);
+  };
+
+  const removeOfficer = (index: number) => {
+    const officer = officers[index];
+    const confirm = window.confirm(`Are you sure you want to remove officer "${officer.name || "this officer"}"?`);
+    if (confirm) {
+      setOfficers(officers.filter((_, i) => i !== index));
+    }
+  };
+
+  // --- TREE CHART DATA MAP ---
+  const activeItems = items.filter(i => i.is_active);
+  const activeOfficers = officers.filter(o => o.isActive);
+
+  // Treasurer (lowest sort_order leadership item, or code BAK)
+  const treasurerItem = activeItems
+    .filter(i => i.type === "LEADERSHIP")
+    .sort((a, b) => a.sort_order - b.sort_order)[0];
+  const treasurerOfficer = treasurerItem ? activeOfficers.find(o => o.unitId === treasurerItem.id) : null;
+
+  // Deputy Treasurer (second lowest sort_order leadership item, or code NBAK)
+  const deputyItem = activeItems
+    .filter(i => i.type === "LEADERSHIP")
+    .sort((a, b) => a.sort_order - b.sort_order)[1];
+  const deputyOfficer = deputyItem ? activeOfficers.find(o => o.unitId === deputyItem.id) : null;
+
+  // Units
+  const unitItems = activeItems
+    .filter(i => i.type === "UNIT")
+    .sort((a, b) => a.sort_order - b.sort_order);
+
   return (
     <section className="admin-card">
-      <div className="admin-card__heading">
+      <style>{`
+        .subtab-buttons {
+          display: flex;
+          gap: 12px;
+          border-bottom: 1px solid var(--line);
+          margin-bottom: 24px;
+          padding-bottom: 12px;
+        }
+        .subtab-buttons button {
+          padding: 8px 16px;
+          border-radius: 6px;
+          border: 1px solid var(--line);
+          background: var(--surface);
+          color: var(--text-secondary);
+          font-weight: bold;
+        }
+        .subtab-buttons button.active {
+          background: var(--brand);
+          color: white;
+          border-color: var(--brand);
+        }
+        .org-preview-container {
+          background: var(--surface-muted);
+          border: 1px solid var(--line);
+          border-radius: 12px;
+          padding: 32px 16px;
+          overflow-x: auto;
+          width: 100%;
+          min-height: 400px;
+        }
+
+        .org-chart-tree {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 32px;
+          width: 100%;
+        }
+
+        .org-chart-node {
+          background: var(--bg);
+          border: 1px solid var(--line);
+          border-radius: 8px;
+          padding: 16px;
+          width: 240px;
+          text-align: center;
+          position: relative;
+          box-shadow: var(--shadow-sm);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          margin: 0 auto;
+        }
+
+        .org-chart-node img {
+          width: 80px;
+          height: 80px;
+          object-fit: cover;
+          border-radius: 50%;
+          border: 3px solid var(--brand-2);
+          background: var(--brand-soft);
+        }
+
+        .org-chart-node .node-position {
+          color: var(--brand-2);
+          font-size: 0.68rem;
+          font-weight: 850;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          line-height: 1.2;
+        }
+
+        .org-chart-node .node-name {
+          font-size: 1rem;
+          font-weight: bold;
+          color: var(--text-primary);
+          line-height: 1.25;
+        }
+
+        .org-chart-node .node-details {
+          font-size: 0.75rem;
+          color: var(--muted);
+        }
+
+        .org-chart-line-v {
+          width: 2px;
+          height: 32px;
+          background: var(--line);
+          margin: 0 auto;
+        }
+
+        .org-chart-branches {
+          display: flex;
+          justify-content: center;
+          gap: 32px;
+          width: 100%;
+          position: relative;
+        }
+
+        .org-chart-branch {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 24px;
+          position: relative;
+        }
+
+        .org-chart-branch::before {
+          content: "";
+          position: absolute;
+          top: -32px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 2px;
+          height: 32px;
+          background: var(--line);
+        }
+
+        .org-chart-branch::after {
+          content: "";
+          position: absolute;
+          top: -32px;
+          height: 2px;
+          background: var(--line);
+          width: 100%;
+        }
+
+        .org-chart-branch:first-child::after {
+          left: 50%;
+          width: 50%;
+        }
+
+        .org-chart-branch:last-child::after {
+          right: 50%;
+          width: 50%;
+        }
+
+        .org-chart-branch:only-child::after {
+          display: none;
+        }
+
+        .org-chart-unit-card {
+          background: var(--brand-soft);
+          border: 1px solid var(--brand-2);
+          color: var(--brand-2);
+          font-size: 0.78rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          padding: 6px 12px;
+          border-radius: 6px;
+          text-align: center;
+          min-width: 160px;
+          z-index: 10;
+        }
+
+        .org-chart-members {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        @media (max-width: 960px) {
+          .org-chart-branches {
+            flex-direction: column;
+            align-items: center;
+            gap: 48px;
+          }
+
+          .org-chart-branch {
+            width: 100%;
+          }
+
+          .org-chart-branch::before,
+          .org-chart-branch::after {
+            display: none;
+          }
+
+          .org-chart-members {
+            width: 100%;
+            align-items: center;
+          }
+        }
+      `}</style>
+
+      <div className="admin-card__heading" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <h2>Organisation Chart & Units</h2>
-          <p>Add, edit, reorder, activate/deactivate, or remove leadership and unit items.</p>
+          <h2>{language === "bm" ? "Carta Organisasi & Unit" : "Organisation Chart & Units"}</h2>
+          <p>{language === "bm" ? "Urus perbendaharaan dalam sistem visual hierarki yang kemas." : "Manage the treasury in a neat hierarchical visual system."}</p>
         </div>
-        <button className="button button--small button--outline" onClick={add}>
-          <Icon name="plus" size={16} /> Add Item
+        <div>
+          {activeSubTab === "units" && (
+            <button className="button button--small button--outline" onClick={addUnit}>
+              <Icon name="plus" size={16} /> {language === "bm" ? "Tambah Unit/Jawatan" : "Add Unit/Position"}
+            </button>
+          )}
+          {activeSubTab === "officers" && (
+            <button className="button button--small button--outline" onClick={addOfficer}>
+              <Icon name="plus" size={16} /> {language === "bm" ? "Tambah Pegawai" : "Add Officer"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="subtab-buttons">
+        <button className={activeSubTab === "units" ? "active" : ""} onClick={() => setActiveSubTab("units")}>
+          {language === "bm" ? "1. Unit & Jawatan" : "1. Units & Positions"}
+        </button>
+        <button className={activeSubTab === "officers" ? "active" : ""} onClick={() => setActiveSubTab("officers")}>
+          {language === "bm" ? "2. Pegawai Pasukan" : "2. Team Officers"}
+        </button>
+        <button className={activeSubTab === "preview" ? "active" : ""} onClick={() => setActiveSubTab("preview")}>
+          {language === "bm" ? "3. Pratinjau Carta" : "3. Chart Preview"}
         </button>
       </div>
 
-      <div className="organisation-editor" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-        {items
-          .sort((a, b) => a.sort_order - b.sort_order)
-          .map((item, index) => (
-            <article
-              key={item.id}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "12px",
-                padding: "16px",
-                border: "1px solid var(--line)",
-                borderRadius: "8px",
-                background: item.is_active ? "var(--bg)" : "var(--soft-bg)",
-                opacity: item.is_active ? 1 : 0.7,
-                position: "relative"
-              }}
-            >
-              <div style={{ display: "flex", gap: "12px", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  <button
-                    disabled={index === 0}
-                    onClick={() => move(index, "up")}
-                    className="button button--small button--outline"
-                    style={{ padding: "4px 8px" }}
-                  >
-                    ▲
-                  </button>
-                  <button
-                    disabled={index === items.length - 1}
-                    onClick={() => move(index, "down")}
-                    className="button button--small button--outline"
-                    style={{ padding: "4px 8px" }}
-                  >
-                    ▼
-                  </button>
+      {activeSubTab === "units" && (
+        <div className="organisation-editor" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {items
+            .sort((a, b) => a.sort_order - b.sort_order)
+            .map((item, index) => (
+              <article
+                key={item.id}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                  padding: "16px",
+                  border: "1px solid var(--line)",
+                  borderRadius: "8px",
+                  background: item.is_active ? "var(--bg)" : "var(--soft-bg)",
+                  opacity: item.is_active ? 1 : 0.7,
+                  position: "relative"
+                }}
+              >
+                <div style={{ display: "flex", gap: "12px", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      disabled={index === 0}
+                      onClick={() => moveUnit(index, "up")}
+                      className="button button--small button--outline"
+                      style={{ padding: "4px 8px" }}
+                    >
+                      ▲
+                    </button>
+                    <button
+                      disabled={index === items.length - 1}
+                      onClick={() => moveUnit(index, "down")}
+                      className="button button--small button--outline"
+                      style={{ padding: "4px 8px" }}
+                    >
+                      ▼
+                    </button>
+                  </div>
+
+                  <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                    <label className="check-field" style={{ margin: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={item.is_active}
+                        onChange={(e) => updateUnit(index, { is_active: e.target.checked })}
+                      />
+                      <span>Active</span>
+                    </label>
+                    <button
+                      className="danger-icon"
+                      onClick={() => removeUnit(index)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "red",
+                        cursor: "pointer",
+                        padding: "4px"
+                      }}
+                    >
+                      <Icon name="trash" size={18} />
+                    </button>
+                  </div>
                 </div>
 
-                <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                  <label className="check-field" style={{ margin: 0 }}>
-                    <input
-                      type="checkbox"
-                      checked={item.is_active}
-                      onChange={(e) => update(index, { is_active: e.target.checked })}
-                    />
-                    <span>Active</span>
+                <div className="form-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                  <label>
+                    <span>Type</span>
+                    <select
+                      value={item.type}
+                      onChange={(e) => updateUnit(index, { type: e.target.value as "LEADERSHIP" | "UNIT" })}
+                    >
+                      <option value="LEADERSHIP">LEADERSHIP</option>
+                      <option value="UNIT">UNIT</option>
+                    </select>
                   </label>
-                  <button
-                    className="danger-icon"
-                    onClick={() => remove(index)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "red",
-                      cursor: "pointer",
-                      padding: "4px"
-                    }}
-                  >
-                    <Icon name="trash" size={18} />
-                  </button>
+
+                  <label>
+                    <span>Code</span>
+                    <input
+                      type="text"
+                      placeholder="e.g. BAK, U-DOPE"
+                      value={item.code}
+                      onChange={(e) => updateUnit(index, { code: e.target.value })}
+                    />
+                  </label>
+
+                  <label style={{ gridColumn: "span 2" }}>
+                    <span>Title</span>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Bendahari Agung Kehormat"
+                      value={item.title}
+                      onChange={(e) => updateUnit(index, { title: e.target.value })}
+                    />
+                  </label>
+
+                  <label>
+                    <span>Member Count</span>
+                    <input
+                      type="number"
+                      min="1"
+                      required
+                      value={item.member_count}
+                      onChange={(e) => updateUnit(index, { member_count: parseInt(e.target.value, 10) || 1 })}
+                    />
+                  </label>
+
+                  <label>
+                    <span>Sort Order</span>
+                    <input
+                      type="number"
+                      value={item.sort_order}
+                      onChange={(e) => updateUnit(index, { sort_order: parseInt(e.target.value, 10) || 1 })}
+                    />
+                  </label>
                 </div>
+              </article>
+            ))}
+        </div>
+      )}
+
+      {activeSubTab === "officers" && (
+        <div className="organisation-editor" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {officers
+            .sort((a, b) => (a.sortOrder || 1) - (b.sortOrder || 1))
+            .map((officer, index) => (
+              <article
+                key={officer.id || index}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                  padding: "16px",
+                  border: "1px solid var(--line)",
+                  borderRadius: "8px",
+                  background: officer.isActive ? "var(--bg)" : "var(--soft-bg)",
+                  opacity: officer.isActive ? 1 : 0.7,
+                  position: "relative"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontWeight: "bold", color: "var(--brand-2)" }}>
+                    Pegawai #{index + 1} : {officer.name}
+                  </span>
+                  <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                    <label className="check-field" style={{ margin: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={officer.isActive}
+                        onChange={(e) => updateOfficer(index, { isActive: e.target.checked })}
+                      />
+                      <span>Active</span>
+                    </label>
+                    <button
+                      className="danger-icon"
+                      onClick={() => removeOfficer(index)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "red",
+                        cursor: "pointer",
+                        padding: "4px"
+                      }}
+                    >
+                      <Icon name="trash" size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                  <label>
+                    <span>Full Name</span>
+                    <input
+                      type="text"
+                      required
+                      value={officer.name}
+                      onChange={(e) => updateOfficer(index, { name: e.target.value })}
+                    />
+                  </label>
+
+                  <label>
+                    <span>Assigned Unit / Position</span>
+                    <select
+                      value={officer.unitId}
+                      onChange={(e) => {
+                        const selectedUnit = items.find(u => u.id === e.target.value);
+                        updateOfficer(index, {
+                          unitId: e.target.value,
+                          position: selectedUnit ? selectedUnit.title : officer.position
+                        });
+                      }}
+                    >
+                      <option value="">-- No Unit (None) --</option>
+                      {items.map(unit => (
+                        <option key={unit.id} value={unit.id}>
+                          {unit.title} ({unit.code || "No Code"})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    <span>Official Role Title (Manual Override if needed)</span>
+                    <input
+                      type="text"
+                      value={officer.position}
+                      onChange={(e) => updateOfficer(index, { position: e.target.value })}
+                    />
+                  </label>
+
+                  <label>
+                    <span>Email Address</span>
+                    <input
+                      type="email"
+                      value={officer.email || ""}
+                      onChange={(e) => updateOfficer(index, { email: e.target.value })}
+                    />
+                  </label>
+
+                  <label style={{ gridColumn: "span 2" }}>
+                    <span>Official Photo URL</span>
+                    <input
+                      type="text"
+                      placeholder="Upload photo or paste URL"
+                      value={officer.photoUrl || ""}
+                      onChange={(e) => updateOfficer(index, { photoUrl: e.target.value })}
+                    />
+                  </label>
+
+                  <div style={{ gridColumn: "span 2", background: "var(--soft-bg)", padding: "12px", borderRadius: "8px", border: "1px dashed var(--line)" }}>
+                    <MediaUploader
+                      purpose="officer_photo"
+                      idToken={sessionStorage.getItem("lfx-user") ? JSON.parse(sessionStorage.getItem("lfx-user")!).idToken : ""}
+                      currentUrl={officer.photoUrl || ""}
+                      onUploadSuccess={(url) => updateOfficer(index, { photoUrl: url })}
+                      onRemove={() => updateOfficer(index, { photoUrl: "" })}
+                      label={language === "bm" ? "Muat naik Gambar Pegawai" : "Upload Officer Photograph"}
+                    />
+                  </div>
+
+                  <label style={{ gridColumn: "span 2" }}>
+                    <span>Biography & Key Responsibilities</span>
+                    <textarea
+                      rows={3}
+                      value={officer.responsibilities || ""}
+                      onChange={(e) => updateOfficer(index, { responsibilities: e.target.value })}
+                    />
+                  </label>
+
+                  <label>
+                    <span>Sort Order (Display priority)</span>
+                    <input
+                      type="number"
+                      value={officer.sortOrder || 1}
+                      onChange={(e) => updateOfficer(index, { sortOrder: parseInt(e.target.value, 10) || 1 })}
+                    />
+                  </label>
+                </div>
+              </article>
+            ))}
+        </div>
+      )}
+
+      {activeSubTab === "preview" && (
+        <div className="org-preview-container">
+          <div className="org-chart-tree" style={{ "--branch-count": unitItems.length } as any}>
+            {/* Level 1: Treasurer */}
+            {treasurerOfficer ? (
+              <div className="org-chart-node">
+                <CmsImage
+                  src={treasurerOfficer.photoUrl || "/officer-placeholder.svg"}
+                  alt={treasurerOfficer.name}
+                  width={100}
+                  height={100}
+                />
+                <span className="node-position">{treasurerOfficer.position}</span>
+                <strong className="node-name">{treasurerOfficer.name}</strong>
+                <small className="node-details">{treasurerOfficer.email}</small>
               </div>
-
-              <div className="form-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <label>
-                  <span>Type</span>
-                  <select
-                    value={item.type}
-                    onChange={(e) => update(index, { type: e.target.value as "LEADERSHIP" | "UNIT" })}
-                  >
-                    <option value="LEADERSHIP">LEADERSHIP</option>
-                    <option value="UNIT">UNIT</option>
-                  </select>
-                </label>
-
-                <label>
-                  <span>Code</span>
-                  <input
-                    type="text"
-                    placeholder="e.g. BAK, U-DOPE"
-                    value={item.code}
-                    onChange={(e) => update(index, { code: e.target.value })}
-                  />
-                </label>
-
-                <label style={{ gridColumn: "span 2" }}>
-                  <span>Title</span>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Bendahari Agung Kehormat"
-                    value={item.title}
-                    onChange={(e) => update(index, { title: e.target.value })}
-                  />
-                </label>
-
-                <label>
-                  <span>Member Count</span>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={item.member_count}
-                    onChange={(e) => update(index, { member_count: parseInt(e.target.value, 10) || 1 })}
-                  />
-                </label>
-
-                <label>
-                  <span>Sort Order</span>
-                  <input
-                    type="number"
-                    value={item.sort_order}
-                    onChange={(e) => update(index, { sort_order: parseInt(e.target.value, 10) || 1 })}
-                  />
-                </label>
+            ) : (
+              <div className="org-chart-node" style={{ borderStyle: "dashed" }}>
+                <span className="node-position">BENDAHARI AGUNG</span>
+                <strong className="node-name" style={{ opacity: 0.5 }}>— Belum Ditetapkan —</strong>
               </div>
-            </article>
-          ))}
-      </div>
+            )}
+
+            <div className="org-chart-line-v"></div>
+
+            {/* Level 2: Deputy Treasurer */}
+            {deputyOfficer ? (
+              <div className="org-chart-node">
+                <CmsImage
+                  src={deputyOfficer.photoUrl || "/officer-placeholder.svg"}
+                  alt={deputyOfficer.name}
+                  width={100}
+                  height={100}
+                />
+                <span className="node-position">{deputyOfficer.position}</span>
+                <strong className="node-name">{deputyOfficer.name}</strong>
+                <small className="node-details">{deputyOfficer.email}</small>
+              </div>
+            ) : (
+              <div className="org-chart-node" style={{ borderStyle: "dashed" }}>
+                <span className="node-position">NAIB BENDAHARI AGUNG</span>
+                <strong className="node-name" style={{ opacity: 0.5 }}>— Belum Ditetapkan —</strong>
+              </div>
+            )}
+
+            <div className="org-chart-line-v"></div>
+
+            {/* Level 3: Unit branches */}
+            <div className="org-chart-branches">
+              {unitItems.map((unit) => {
+                const members = activeOfficers
+                  .filter(o => o.unitId === unit.id)
+                  .sort((a, b) => (a.sortOrder || 1) - (b.sortOrder || 1));
+
+                return (
+                  <div key={unit.id} className="org-chart-branch">
+                    <div className="org-chart-unit-card">
+                      {unit.title}
+                      {unit.code && <span style={{ marginLeft: "6px", fontSize: "0.75rem", background: "var(--accent)", color: "var(--background)", padding: "1px 4px", borderRadius: "3px" }}>{unit.code}</span>}
+                    </div>
+
+                    <div className="org-chart-members">
+                      {members.length > 0 ? (
+                        members.map((member) => (
+                          <div key={member.id} className="org-chart-node">
+                            <CmsImage
+                              src={member.photoUrl || "/officer-placeholder.svg"}
+                              alt={member.name}
+                              width={80}
+                              height={80}
+                            />
+                            <span className="node-position">{member.position}</span>
+                            <strong className="node-name" style={{ fontSize: "1.05rem" }}>{member.name}</strong>
+                            <small className="node-details" style={{ fontSize: "0.75rem" }}>{member.email}</small>
+                          </div>
+                        ))
+                      ) : (
+                        <div style={{ color: "var(--muted)", fontSize: "0.8rem", fontStyle: "italic", border: "1px dashed var(--line)", padding: "12px", borderRadius: "8px" }}>
+                          No officers assigned
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="admin-card__footer" style={{ marginTop: "24px", paddingTop: "16px", borderTop: "1px solid var(--line)" }}>
-        <button disabled={busy} className="button" onClick={() => onSave(items)}>
-          <Icon name="save" size={17} /> Save organisation
+        <button disabled={busy} className="button" onClick={() => onSave(items, officers)}>
+          <Icon name="save" size={17} /> {busy ? "Saving..." : (language === "bm" ? "Simpan Organisasi" : "Save organisation")}
         </button>
       </div>
     </section>

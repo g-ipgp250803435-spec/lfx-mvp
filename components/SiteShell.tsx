@@ -100,6 +100,13 @@ export function Footer() {
       <div><h3>{language === "bm" ? "Pautan" : "Links"}</h3>{content.footer.links.filter((item) => item.enabled).map((item) => <Link key={item.id} href={item.href}>{t(item.label, language)}</Link>)}</div>
       <div><h3>{language === "bm" ? "Hubungi" : "Contact"}</h3><p>{content.footer.address}</p><a href={`mailto:${content.site.officialEmail}`}>{content.site.officialEmail}</a></div>
     </div>
-    <div className="container footer__bottom"><span>© {new Date().getFullYear()} {t(content.footer.copyright, language)}</span><span>Hab Perbendaharaan Digital · v1.0</span></div>
+    <div className="container footer__bottom">
+      <span>© {new Date().getFullYear()} {t(content.footer.copyright, language)}</span>
+      <div className="footer-status" aria-label={language === "bm" ? "Status Operasi HiPER: Sistem Beroperasi" : "HiPER Operations Status: Systems Operational"}>
+        <span className="live-dot" />
+        <span><strong>HiPER Operations</strong> · <small>{language === "bm" ? "Sistem beroperasi" : "Systems operational"}</small></span>
+      </div>
+      <span>Hab Perbendaharaan Digital · v1.0</span>
+    </div>
   </footer>;
 }
