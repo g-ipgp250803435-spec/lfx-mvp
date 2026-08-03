@@ -44,7 +44,18 @@ export function TabungDashboard({ compact = false }: { compact?: boolean }) {
 
   return <div className={compact ? "tabung-dashboard tabung-dashboard--compact" : "tabung-dashboard"}>
     <div className="transparency-grid">
-      <article className="fund-card fund-card--featured"><span>{labels.thisWeek}</span><strong>{money(summary.thisWeek)}</strong><p>{language === "bm" ? `Sasaran mingguan ${money(target)}` : `Weekly target ${money(target)}`}</p><div className="progress"><span style={{ width: `${progress}%` }}/></div><small>{progress.toFixed(0)}% {language === "bm" ? "daripada sasaran" : "of target"}</small></article>
+      <article className="fund-card fund-card--featured">
+        <span>
+          {language === "bm" ? "Minggu ini" : "This Week"}
+          <span className="featured-sub-label">{language === "bm" ? "This Week" : "Minggu ini"}</span>
+        </span>
+        <strong>{money(summary.thisWeek)}</strong>
+        <p>{language === "bm" ? `Sasaran mingguan ${money(target)}` : `Weekly target ${money(target)}`}</p>
+        <div className="progress">
+          <span style={{ width: `${progress}%` }}/>
+        </div>
+        <small>{progress.toFixed(0)}% {language === "bm" ? "daripada sasaran" : "of target"}</small>
+      </article>
       <article className="fund-card"><Icon name="chart"/><span>{labels.collections} · {labels.thisMonth}</span><strong>{money(summary.monthCollections)}</strong></article>
       <article className="fund-card"><Icon name="wallet"/><span>{labels.distributions} · {labels.thisMonth}</span><strong>{money(summary.monthDistributions)}</strong></article>
       <article className="fund-card"><Icon name="shield"/><span>{labels.annualBalance}</span><strong>{money(summary.annualBalance)}</strong></article>

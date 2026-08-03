@@ -92,6 +92,18 @@ export type Officer = {
   level: number;
 };
 
+export type OrgOfficer = {
+  id: string;
+  name: string;
+  position: string | LocalizedText;
+  photoUrl: string;
+  unitId: string;
+  sortOrder: number;
+  isActive: boolean;
+  email: string;
+  responsibilities: string | LocalizedText;
+};
+
 export type SiteContent = {
   site: {
     name: string;

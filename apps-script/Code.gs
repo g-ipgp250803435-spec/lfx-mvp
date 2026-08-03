@@ -64,6 +64,7 @@ function doPost(e) {
       case "ikes/status": return json_({ ok: true, data: withLock_(() => updateIkesStatus_(body)) });
       case "tabung/record": return json_({ ok: true, data: withLock_(() => recordTabung_(body)) });
       case "tabung/delete": return json_({ ok: true, data: withLock_(() => deleteTabung_(body)) });
+      case "ikes/delete": return json_({ ok: true, data: withLock_(() => deleteIkes_(body)) });
       case "announcements/saveAll": return json_({ ok: true, data: withLock_(() => saveAnnouncements_(body)) });
       case "organisation/saveAll": return json_({ ok: true, data: withLock_(() => saveOrganisationItems_(body)) });
       case "content/save": return json_({ ok: true, data: withLock_(() => saveSiteContent_(body)) });
@@ -482,6 +483,19 @@ function deleteTabung_(body) {
   return { success: true };
 }
 
+function deleteIkes_(body) {
+  const admin = requireAdmin_(body.idToken);
+  const applicationId = required_(body.application_id, "application_id");
+  const item = findBy_("tbl_ikes", "application_id", applicationId);
+  if (!item) throw new Error("iKES application not found.");
+
+  const success = deleteBy_("tbl_ikes", "application_id", applicationId);
+  if (!success) throw new Error("Failed to delete record.");
+
+  audit_(admin.email, "IKES_DELETED", { application_id: applicationId, user_id: item.user_id, amount: item.amount_requested });
+  return { success: true };
+}
+
 function deleteBy_(name, key, value) {
   const sheet = sheet_(name);
   const data = sheet.getDataRange().getValues();
@@ -535,23 +549,62 @@ function saveSiteContent_(body) {
 
 function getOrganisationItems_() {
   const item = findBy_("tbl_content", "content_key", "ORGANISATION_ITEMS");
+  const defaultItems = [
+    { id: "org-1", type: "LEADERSHIP", title: "Bendahari Agung Kehormat", code: "BAK", member_count: 1, sort_order: 1, is_active: true },
+    { id: "org-2", type: "LEADERSHIP", title: "Naib Bendahari Agung Kehormat", code: "NBAK", member_count: 1, sort_order: 2, is_active: true },
+    { id: "org-3", type: "UNIT", title: "Unit Perancangan & Kesatuan", code: "U-PERK", member_count: 1, sort_order: 3, is_active: true },
+    { id: "org-4", type: "UNIT", title: "Unit Data & Operasi", code: "U-DOPE", member_count: 2, sort_order: 4, is_active: true },
+    { id: "org-5", type: "UNIT", title: "Unit Aset & Inventori", code: "U-SAVE", member_count: 2, sort_order: 5, is_active: true }
+  ];
+  const defaultOfficers = [
+    {
+      id: "officer-1",
+      name: "Muhammad Haris Bin Azman",
+      position: "Bendahari Agung Kehormat",
+      photoUrl: "",
+      unitId: "org-1",
+      sortOrder: 1,
+      isActive: true,
+      email: "haris@student.ipgm.edu.my",
+      responsibilities: "Mengetuai Pejabat Bendahari Agung, menetapkan belanjawan tahunan, dan mengurus akaun rasmi JPP IPGKKB."
+    },
+    {
+      id: "officer-2",
+      name: "Nur Aisya Binti Mohd Ridzuan",
+      position: "Naib Bendahari Agung Kehormat",
+      photoUrl: "",
+      unitId: "org-2",
+      sortOrder: 1,
+      isActive: true,
+      email: "aisya@student.ipgm.edu.my",
+      responsibilities: "Membantu pengurusan belanjawan harian, menyelia program iKES dan iAset, serta menyediakan laporan bulanan."
+    }
+  ];
+
   if (!item || !item.json_content) {
-    return [
-      { id: "org-1", type: "LEADERSHIP", title: "Bendahari Agung Kehormat", code: "BAK", member_count: 1, sort_order: 1, is_active: true },
-      { id: "org-2", type: "LEADERSHIP", title: "Naib Bendahari Agung Kehormat", code: "NBAK", member_count: 1, sort_order: 2, is_active: true },
-      { id: "org-3", type: "UNIT", title: "Unit Perancangan & Kesatuan", code: "U-PERK", member_count: 1, sort_order: 3, is_active: true },
-      { id: "org-4", type: "UNIT", title: "Unit Data & Operasi", code: "U-DOPE", member_count: 2, sort_order: 4, is_active: true },
-      { id: "org-5", type: "UNIT", title: "Unit Aset & Inventori", code: "U-SAVE", member_count: 2, sort_order: 5, is_active: true }
-    ];
+    return { items: defaultItems, officers: defaultOfficers };
   }
-  try { return JSON.parse(item.json_content); } catch (error) { throw new Error("Stored organisation content is invalid JSON."); }
+  try {
+    const parsed = JSON.parse(item.json_content);
+    if (Array.isArray(parsed)) {
+      return { items: parsed, officers: defaultOfficers };
+    }
+    if (!parsed.items) parsed.items = defaultItems;
+    if (!parsed.officers) parsed.officers = defaultOfficers;
+    return parsed;
+  } catch (error) {
+    return { items: defaultItems, officers: defaultOfficers };
+  }
 }
 
 function saveOrganisationItems_(body) {
   const admin = requireAdmin_(body.idToken);
-  const items = Array.isArray(body.items) ? body.items : [];
+  const payload = body.payload; // Accepting the full payload with items and officers!
+  if (!payload || !Array.isArray(payload.items) || !Array.isArray(payload.officers)) {
+    throw new Error("Invalid organisation payload. Both items and officers are required.");
+  }
   const codes = {};
-  items.forEach((item) => {
+  payload.items.forEach((item) => {
     if (!item.title) throw new Error("Title is required for all items.");
     const count = Number(item.member_count);
     if (isNaN(count) || count <= 0 || !Number.isInteger(count)) throw new Error("Member count must be a positive whole number.");
@@ -562,9 +615,9 @@ function saveOrganisationItems_(body) {
     }
   });
 
-  const value = { content_key: "ORGANISATION_ITEMS", json_content: JSON.stringify(items), updated_at: new Date().toISOString(), updated_by: admin.email };
+  const value = { content_key: "ORGANISATION_ITEMS", json_content: JSON.stringify(payload), updated_at: new Date().toISOString(), updated_by: admin.email };
   upsertBy_("tbl_content", "content_key", "ORGANISATION_ITEMS", value);
-  audit_(admin.email, "ORGANISATION_SAVED", { count: items.length });
+  audit_(admin.email, "ORGANISATION_SAVED", { count: payload.items.length, officersCount: payload.officers.length });
   return { updated_at: value.updated_at };
 }
 
