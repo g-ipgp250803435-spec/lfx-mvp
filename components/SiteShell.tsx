@@ -11,7 +11,7 @@ import { t } from "@/lib/i18n";
 
 export function Header() {
   const { language, setLanguage, theme, toggleTheme, labels } = useApp();
-  const { content, demo } = useContent();
+  const { content } = useContent();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -48,12 +48,6 @@ export function Header() {
 
   return <>
     <a className="skip-link" href="#main-content">Skip to content</a>
-    <div className="official-bar">
-      <div className="container official-bar__inner">
-        <span><Icon name="shield" size={15} /> {labels.portal}</span>
-        <span className={`mode-pill ${demo ? "mode-pill--demo" : ""}`}>{demo ? labels.demo : labels.live}</span>
-      </div>
-    </div>
     {content.notice.enabled && <div className="notice-bar"><div className="container"><strong>{t(content.notice.label, language)}</strong><span>{t(content.notice.text, language)}</span><Link href={content.notice.href}>{labels.learnMore}<Icon name="arrow" size={15}/></Link></div></div>}
     <header className="header">
       <div className="container header__main">
@@ -96,7 +90,7 @@ export function Footer() {
   if (pathname.startsWith("/admin")) return null;
   return <footer className="footer">
     <div className="container footer__grid">
-      <div className="footer__brand"><CmsImage src={content.site.logoUrl || "/lfx-mark.svg"} alt="HiPER" width={68} height={68}/><div><strong>{content.site.name}</strong><p>{t(content.footer.about, language)}</p></div></div>
+      <div className="footer__brand"><CmsImage src={content.site.logoUrl || "/lfx-mark.svg"} alt="HiPER" className="footer-logo"/><div><strong>{content.site.name}</strong><p>{t(content.footer.about, language)}</p></div></div>
       <div><h3>{language === "bm" ? "Pautan" : "Links"}</h3>{content.footer.links.filter((item) => item.enabled).map((item) => <Link key={item.id} href={item.href}>{t(item.label, language)}</Link>)}</div>
       <div><h3>{language === "bm" ? "Hubungi" : "Contact"}</h3><p>{content.footer.address}</p><a href={`mailto:${content.site.officialEmail}`}>{content.site.officialEmail}</a></div>
     </div>
