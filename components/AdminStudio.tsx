@@ -2428,6 +2428,7 @@ function OrganisationEditor({
                   alt={treasurerOfficer.name}
                   width={100}
                   height={100}
+                  variant="officer-avatar"
                 />
                 <span className="node-position">{treasurerOfficer.position}</span>
                 <strong className="node-name">{treasurerOfficer.name}</strong>
@@ -2450,6 +2451,7 @@ function OrganisationEditor({
                   alt={deputyOfficer.name}
                   width={100}
                   height={100}
+                  variant="officer-avatar"
                 />
                 <span className="node-position">{deputyOfficer.position}</span>
                 <strong className="node-name">{deputyOfficer.name}</strong>
@@ -2487,6 +2489,7 @@ function OrganisationEditor({
                               alt={member.name}
                               width={80}
                               height={80}
+                              variant="officer-avatar"
                             />
                             <span className="node-position">{member.position}</span>
                             <strong className="node-name" style={{ fontSize: "1.05rem" }}>{member.name}</strong>

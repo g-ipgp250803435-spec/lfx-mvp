@@ -186,10 +186,10 @@ html[data-theme="dark"] {
   --admin-sidebar-btn-active-bg: rgba(255,255,255,.09);
   --admin-sidebar-btn-active-color: #fff;
 
-  --button-accent-text: #13211e;
+  --button-accent-text: #16080c;
   --ghost-border: rgba(255,255,255,.42);
   --ghost-color: #fff;
-  --eyebrow-light-color: var(--accent-soft);
+  --eyebrow-light-color: var(--gold-300);
 
   --live-card-bg: rgba(4,24,20,.68);
   --live-card-border: rgba(255,255,255,.2);
@@ -272,6 +272,31 @@ img { max-width: 100%; }
 .status--damaged, .status--rejected { background: #fae0e0; color: #913737; }
 .status--maintenance { background: #ece5f5; color: #654b85; }
 html[data-theme="dark"] .status { filter: saturate(.7) brightness(.86); }
+
+html[data-theme="dark"] .notice-bar {
+  color: var(--gold-300);
+}
+html[data-theme="dark"] .notice-bar strong {
+  background: rgba(225, 199, 125, 0.15);
+  color: var(--gold-300);
+}
+html[data-theme="dark"] .notice-bar a {
+  color: var(--gold-300);
+}
+html[data-theme="dark"] .notice-bar a:hover {
+  color: var(--gold-400);
+}
+html[data-theme="dark"] .policy-notice {
+  color: var(--gold-300);
+}
+
+.notice-bar a:hover {
+  text-decoration: underline;
+}
+.notice-bar a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
 
 .official-bar { background: var(--official-bar-bg); color: var(--official-bar-text); font-size: .76rem; }
 .official-bar__inner { min-height: 33px; display: flex; align-items: center; justify-content: space-between; }

@@ -298,9 +298,10 @@ export default function OrganisationPage() {
                   onClick={() => setSelectedOfficer(treasurerOfficer)}
                   aria-label={`${t(treasurerOfficer.position, language)}: ${treasurerOfficer.name}. Click for details.`}
                 >
-                  <img
+                  <CmsImage
                     src={treasurerOfficer.photoUrl || "/officer-placeholder.svg"}
                     alt={treasurerOfficer.name}
+                    variant="officer-avatar"
                   />
                   <span className="node-position">{t(treasurerOfficer.position, language)}</span>
                   <strong className="node-name">{treasurerOfficer.name}</strong>
@@ -324,9 +325,10 @@ export default function OrganisationPage() {
                   onClick={() => setSelectedOfficer(deputyOfficer)}
                   aria-label={`${t(deputyOfficer.position, language)}: ${deputyOfficer.name}. Click for details.`}
                 >
-                  <img
+                  <CmsImage
                     src={deputyOfficer.photoUrl || "/officer-placeholder.svg"}
                     alt={deputyOfficer.name}
+                    variant="officer-avatar"
                   />
                   <span className="node-position">{t(deputyOfficer.position, language)}</span>
                   <strong className="node-name">{deputyOfficer.name}</strong>
@@ -377,9 +379,10 @@ export default function OrganisationPage() {
                               onClick={() => setSelectedOfficer(member)}
                               aria-label={`${t(member.position, language)}: ${member.name}. Click for details.`}
                             >
-                              <img
+                              <CmsImage
                                 src={member.photoUrl || "/officer-placeholder.svg"}
                                 alt={member.name}
+                                variant="officer-avatar"
                               />
                               <span className="node-position">{t(member.position, language)}</span>
                               <strong className="node-name" style={{ fontSize: "1.05rem" }}>{member.name}</strong>

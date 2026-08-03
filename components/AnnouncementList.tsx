@@ -8,6 +8,7 @@ import { demoStore } from "@/lib/demo-store";
 import { formatDate } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import type { Announcement } from "@/lib/types";
+import { MediaImage } from "@/components/CmsImage";
 
 export function AnnouncementList({ compact = false }: { compact?: boolean }) {
   const [items, setItems] = useState<Announcement[]>([]);
@@ -189,10 +190,11 @@ export function AnnouncementList({ compact = false }: { compact?: boolean }) {
                       onClick={() => setSelectedImage(item.image_url || null)}
                       title={language === "bm" ? "Klik untuk besarkan" : "Click to enlarge"}
                     >
-                      <img
+                      <MediaImage
                         src={item.image_url}
                         alt={t(item.title, language)}
                         className="announcement-poster-img"
+                        variant="poster"
                         loading="lazy"
                       />
                     </div>
@@ -240,10 +242,11 @@ export function AnnouncementList({ compact = false }: { compact?: boolean }) {
             >
               <Icon name="close" size={20} />
             </button>
-            <img
+            <MediaImage
               src={selectedImage}
               alt={language === "bm" ? "Poster Pengumuman Penuh" : "Full Announcement Poster"}
               className="zoom-poster-img"
+              variant="full-view"
             />
           </div>
         </div>
