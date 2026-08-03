@@ -37,7 +37,7 @@ export function LoanForm() {
         const next: Loan = { loan_id: uid("LON"), asset_id: form.asset_id, asset_name: asset?.name, user_id: user.email, user_name: user.name, purpose: form.purpose, request_date: new Date().toISOString(), approved_by: "", status: "PENDING", qr_code_url: "", date_borrowed: form.date_borrowed, date_returned_expected: form.date_returned_expected, date_returned_actual: "" };
         demoStore.saveLoans([next, ...demoStore.getLoans()]);
       } else await apiPost("loan/request", { idToken: user.idToken, ...form });
-      setMessage({ type: "success", text: language === "bm" ? "Permohonan berjaya dihantar. Status boleh disemak dengan Pejabat Bendahari." : "Application submitted successfully. You may check its status with the Treasury Office." });
+      setMessage({ type: "success", text: language === "bm" ? "Permohonan berjaya dihantar." : "Application submitted successfully." });
       setForm({ asset_id: "", purpose: "", date_borrowed: "", date_returned_expected: "" });
     } catch (error) { setMessage({ type: "error", text: error instanceof Error ? error.message : "Submission failed" }); }
     finally { setBusy(false); }
