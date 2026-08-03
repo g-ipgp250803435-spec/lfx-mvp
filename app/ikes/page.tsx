@@ -68,8 +68,8 @@ export default function IkesPage() {
     <>
       <PageHero
         eyebrow={{
-          bm: "Pinjaman kebajikan tanpa faedah",
-          en: "Interest-free welfare loan"
+          bm: "Pinjaman kewangan tanpa faedah",
+          en: "Interest-free financial loan"
         }}
         title={{ bm: "iKES", en: "iKES" }}
         description={{
