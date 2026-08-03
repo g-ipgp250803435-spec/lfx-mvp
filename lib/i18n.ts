@@ -27,7 +27,7 @@ export const ui = {
     loading: "Memuatkan…",
     demo: "Mod demo",
     live: "Data langsung",
-    donate: "Sumbang sekarang",
+    donate: "Derma sekarang",
     publicTransparency: "Ketelusan awam",
     thisWeek: "Minggu ini",
     thisMonth: "Bulan ini",
@@ -35,12 +35,12 @@ export const ui = {
     collections: "Kutipan",
     distributions: "Agihan",
     recentDistributions: "Agihan terkini",
-    repaymentNotice: "Bayaran balik penuh mesti dibuat dalam tempoh 3 hari selepas elaun sara hidup dikreditkan.",
+    repaymentNotice: "Bayaran balik penuh mesti dibuat dalam tempoh tiga (3) hari selepas elaun dikreditkan.",
     submit: "Hantar permohonan",
     signedInAs: "Log masuk sebagai",
     signOut: "Log keluar",
     continueDemo: "Teruskan sebagai pengguna demo",
-    googleRequired: "Sila log masuk menggunakan akaun Google kampus untuk meneruskan.",
+    googleRequired: "Sila log masuk menggunakan akaun DELIMa untuk meneruskan.",
     backHome: "Kembali ke laman utama"
   },
   en: {
@@ -50,7 +50,7 @@ export const ui = {
     darkMode: "Dark mode",
     lightMode: "Light mode",
     login: "Sign in",
-    admin: "Admin",
+    admin: "Administrator",
     learnMore: "Learn more",
     viewAll: "View all",
     available: "Available",
@@ -72,12 +72,12 @@ export const ui = {
     collections: "Collections",
     distributions: "Distributions",
     recentDistributions: "Recent distributions",
-    repaymentNotice: "Full repayment must be made within 3 days after the subsistence allowance is credited.",
+    repaymentNotice: "Full repayment must be made within three (3) days after the subsistence allowance is credited.",
     submit: "Submit application",
     signedInAs: "Signed in as",
     signOut: "Sign out",
     continueDemo: "Continue as demo user",
-    googleRequired: "Please sign in with your campus Google account to continue.",
+    googleRequired: "Please sign in with your DELIMa account to continue.",
     backHome: "Back to homepage"
   }
 } as const;
