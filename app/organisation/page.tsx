@@ -301,6 +301,8 @@ export default function OrganisationPage() {
                   <CmsImage
                     src={treasurerOfficer.photoUrl || "/officer-placeholder.svg"}
                     alt={treasurerOfficer.name}
+                    width={110}
+                    height={110}
                     variant="officer-avatar"
                   />
                   <span className="node-position">{t(treasurerOfficer.position, language)}</span>
@@ -328,6 +330,8 @@ export default function OrganisationPage() {
                   <CmsImage
                     src={deputyOfficer.photoUrl || "/officer-placeholder.svg"}
                     alt={deputyOfficer.name}
+                    width={110}
+                    height={110}
                     variant="officer-avatar"
                   />
                   <span className="node-position">{t(deputyOfficer.position, language)}</span>
@@ -382,6 +386,8 @@ export default function OrganisationPage() {
                               <CmsImage
                                 src={member.photoUrl || "/officer-placeholder.svg"}
                                 alt={member.name}
+                                width={110}
+                                height={110}
                                 variant="officer-avatar"
                               />
                               <span className="node-position">{t(member.position, language)}</span>

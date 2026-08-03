@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Icon } from "@/components/Icon";
 
 export type MediaImageVariant = "logo" | "poster" | "officer-avatar" | "thumbnail" | "full-view";
@@ -52,12 +52,20 @@ export function MediaImage({
 }: MediaImageProps) {
   const [prevSrc, setPrevSrc] = useState<string | undefined>(src);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">(src ? "loading" : "error");
+  const imgRef = useRef<HTMLImageElement>(null);
 
   // Standard React pattern to adjust state when props change (avoiding useEffect cascading renders)
   if (src !== prevSrc) {
     setPrevSrc(src);
     setStatus(src ? "loading" : "error");
   }
+
+  // Handle cached images immediately
+  useEffect(() => {
+    if (imgRef.current && imgRef.current.complete) {
+      setStatus("loaded");
+    }
+  }, [src]);
 
   const handleLoad = () => {
     setStatus("loaded");
@@ -71,13 +79,17 @@ export function MediaImage({
 
   // Variant styles and classes
   let objectFit: React.CSSProperties["objectFit"] = "cover";
+  let imgHeight: React.CSSProperties["height"] = "100%";
   if (variant === "logo" || variant === "poster" || variant === "full-view") {
     objectFit = "contain";
+  }
+  if (variant === "poster" || variant === "full-view") {
+    imgHeight = "auto";
   }
 
   const baseImageStyle: React.CSSProperties = {
     width: "100%",
-    height: "100%",
+    height: imgHeight,
     objectFit,
     transition: "opacity 0.2s ease-in-out",
     opacity: status === "loaded" ? 1 : 0,
@@ -162,6 +174,7 @@ export function MediaImage({
       {optimized && (
         /* eslint-disable-next-line @next/next/no-img-element */
         <img
+          ref={imgRef}
           src={optimized}
           alt={alt || "Media Image"}
           style={baseImageStyle}
