@@ -73,8 +73,8 @@ export default function IkesPage() {
         }}
         title={{ bm: "iKES", en: "iKES" }}
         description={{
-          bm: "Sokongan jangka pendek yang direkodkan dengan telus untuk membantu pelajar menghadapi keperluan mendesak.",
-          en: "Transparent short-term support for students facing urgent needs."
+          bm: "Sokongan kewangan jangka pendek untuk membantu pelajar menghadapi keperluan mendesak.",
+          en: "Financial short-term support for students facing urgent needs."
         }}
         actions={
           <Link href="/ikes/apply" className="button button--accent">
@@ -120,8 +120,8 @@ export default function IkesPage() {
             <Icon name="clock" />
             <span>
               {language === "bm"
-                ? "Bayaran balik penuh mesti dibuat dalam tempoh 3 hari selepas elaun sara hidup dikreditkan."
-                : "Full repayment must be made within 3 days after the subsistence allowance is credited."}
+                ? "Bayaran balik penuh mesti dibuat dalam tempoh tiga (3) hari selepas elaun dikreditkan."
+                : "Full repayment must be made within three (3) days after the allowance is credited."}
             </span>
           </div>
 
@@ -138,7 +138,7 @@ export default function IkesPage() {
                     disabled={loading}
                   >
                     <Icon name="refresh" size={14} />
-                    {language === "bm" ? "Segarkan" : "Refresh"}
+                    {language === "bm" ? "Muat semula" : "Refresh"}
                   </button>
                 </div>
               )}
@@ -149,8 +149,8 @@ export default function IkesPage() {
             {!user && (
               <p className="muted" style={{ marginTop: "16px" }}>
                 {language === "bm"
-                  ? "Sila log masuk menggunakan Google untuk melihat senarai permohonan iKES anda."
-                  : "Please sign in with Google to view your list of iKES applications."}
+                  ? "Sila log masuk menggunakan akaun DELIMa untuk melihat senarai permohonan iKES anda."
+                  : "Please sign in with DELIMa account to view your list of iKES applications."}
               </p>
             )}
 
@@ -249,7 +249,7 @@ export default function IkesPage() {
                                 </div>
 
                                 <div className="student-ikes-card__item">
-                                  <span>{language === "bm" ? "Tempoh Matang" : "Repayment Term"}</span>
+                                  <span>{language === "bm" ? "Tempoh Bayaran Balik" : "Repayment Term"}</span>
                                   <strong>
                                     {app.repayment_term_days !== undefined && app.repayment_term_days !== null
                                       ? `${app.repayment_term_days} ${language === "bm" ? "hari" : "days"}`
@@ -258,7 +258,7 @@ export default function IkesPage() {
                                 </div>
 
                                 <div className="student-ikes-card__item">
-                                  <span>{language === "bm" ? "Tarikh Tamat Tempoh" : "Repayment Due Date"}</span>
+                                  <span>{language === "bm" ? "Tarikh Bayaran Balik" : "Repayment Due Date"}</span>
                                   <strong>
                                     {app.repayment_due_date ? formatDate(app.repayment_due_date) : "—"}
                                   </strong>
