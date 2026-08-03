@@ -130,8 +130,8 @@ export default function StudentDashboardPage() {
         }}
         title={{ bm: "Permohonan Saya", en: "My Applications" }}
         description={{
-          bm: "Semak status dan sejarah pinjaman iAset serta bantuan kebajikan iKES anda di sini.",
-          en: "Check the status and history of your iAset loans and iKES welfare applications here."
+          bm: "Semak status dan sejarah pinjaman iAset serta pinjaman iKES anda di sini.",
+          en: "Check the status and history of your iAset loans and iKES applications here."
         }}
       />
 
@@ -165,7 +165,7 @@ export default function StudentDashboardPage() {
                 style={{ display: "flex", alignItems: "center", gap: "8px" }}
               >
                 <Icon name="refresh" size={14} />
-                {language === "bm" ? "Segarkan" : "Refresh"}
+                {language === "bm" ? "Muat semula" : "Refresh"}
               </button>
             )}
           </div>
@@ -175,8 +175,8 @@ export default function StudentDashboardPage() {
           {!user && (
             <p className="muted" style={{ marginTop: "24px" }}>
               {language === "bm"
-                ? "Sila log masuk menggunakan Google untuk melihat permohonan anda."
-                : "Please sign in with Google to view your applications."}
+                ? "Sila log masuk menggunakan akaun DELIMa untuk melihat permohonan anda."
+                : "Please sign in with DELIMa account to view your applications."}
             </p>
           )}
 
@@ -353,7 +353,7 @@ export default function StudentDashboardPage() {
                               </div>
 
                               <div className="student-ikes-card__item">
-                                <span>{language === "bm" ? "Tempoh Matang" : "Repayment Term"}</span>
+                                <span>{language === "bm" ? "Tempoh Bayaran Balik" : "Repayment Term"}</span>
                                 <strong>
                                   {app.repayment_term_days !== undefined && app.repayment_term_days !== null
                                     ? `${app.repayment_term_days} ${language === "bm" ? "hari" : "days"}`
@@ -362,7 +362,7 @@ export default function StudentDashboardPage() {
                               </div>
 
                               <div className="student-ikes-card__item">
-                                <span>{language === "bm" ? "Tarikh Tamat Tempoh" : "Repayment Due Date"}</span>
+                                <span>{language === "bm" ? "Tarikh Bayaran Balik" : "Repayment Due Date"}</span>
                                 <strong>
                                   {app.repayment_due_date ? formatDate(app.repayment_due_date) : "—"}
                                 </strong>
