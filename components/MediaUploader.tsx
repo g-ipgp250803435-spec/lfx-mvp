@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/Icon";
 import { apiPost, isDemoMode } from "@/lib/api";
+import { MediaImage } from "@/components/CmsImage";
 import { useApp } from "@/components/Providers";
 
 export type MediaPurpose = "logo" | "favicon" | "asset_image" | "announcement_pdf" | "donation_qr" | "officer_photo" | "announcement_image";
@@ -173,8 +174,8 @@ export function MediaUploader({
       {currentUrl && (
         <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
           {isImage ? (
-            <div style={{ width: "80px", height: "80px", position: "relative", border: "1px solid var(--line)", borderRadius: "4px", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "#fff" }}>
-              <img src={currentUrl} alt="Preview" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+            <div style={{ width: "80px", height: "80px", position: "relative", border: "1px solid var(--line)", borderRadius: "4px", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-muted)" }}>
+              <MediaImage src={currentUrl} alt="Preview" variant={purpose === "logo" || purpose === "favicon" ? "logo" : purpose === "officer_photo" ? "officer-avatar" : "thumbnail"} />
             </div>
           ) : (
             <div style={{ width: "80px", height: "80px", border: "1px solid var(--line)", borderRadius: "4px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#fee2e2" }}>
