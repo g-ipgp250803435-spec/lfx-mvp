@@ -3,12 +3,12 @@
     "name": "Hab Perbendaharaan Digital",
     "shortName": "HiPER",
     "tagline": {
-      "bm": "Satu platform. Semua urusan Pejabat Bendahari.",
-      "en": "One platform. All Treasury Office affairs."
+      "bm": "Satu platform. Semua urusan Pejabat Bendahari Agung Kehormat.",
+      "en": "One platform. All Honorary Treasurer-General Office affairs."
     },
     "description": {
-      "bm": "Pusat operasi harian Pejabat Yang Berhormat Bendahari Agung, Majlis Perwakilan Pelajar IPG.",
-      "en": "The daily operations centre for the Office of the Honourable Treasurer-General, IPG Student Representative Council."
+      "bm": "Pusat operasi harian Pejabat Bendahari Agung Kehormat, Jawatankuasa Perwakilan Pelajar IPG Kampus Kota Bharu.",
+      "en": "The daily operations centre for the Office of the Honourable Treasurer-General, Student Representative Committee of IPG Kota Bharu Campus."
     },
     "logoUrl": "/lfx-mark.svg",
     "faviconUrl": "/favicon.svg",
@@ -18,8 +18,8 @@
   },
   "hero": {
     "eyebrow": {
-      "bm": "Pejabat Yang Berhormat Bendahari Agung",
-      "en": "Office of the Honourable Treasurer-General"
+      "bm": "Pejabat Bendahari Agung Kehormat",
+      "en": "Office of the Honorary Treasurer-General"
     },
     "title": {
       "bm": "Urusan kewangan kampus, dipermudah.",
@@ -60,7 +60,7 @@
       "id": "feature-iaset",
       "icon": "briefcase",
       "title": { "bm": "iAset", "en": "iAset" },
-      "description": { "bm": "Semak ketersediaan dan mohon aset secara paperless.", "en": "Check availability and request assets through a paperless workflow." },
+      "description": { "bm": "Semak ketersediaan dan mohon aset secara digital.", "en": "Check availability and request assets through a digital workflow." },
       "href": "/iaset"
     },
     {
@@ -104,16 +104,16 @@
   },
   "footer": {
     "about": {
-      "bm": "Hab Perbendaharaan Digital ialah sistem operasi digital Pejabat Yang Berhormat Bendahari Agung.",
-      "en": "Hab Perbendaharaan Digital is the digital operating system of the Office of the Honourable Treasurer-General."
+      "bm": "Hab Perbendaharaan Digital ialah sistem operasi digital Pejabat Bendahari Agung Kehormat.",
+      "en": "Hab Perbendaharaan Digital is the digital operating system of the Office of the Honorary Treasurer-General."
     },
-    "address": "Majlis Perwakilan Pelajar, Institut Pendidikan Guru",
+    "address": "Jawatankuasa Perwakilan Pelajar, IPG Kampus Kota Bharu",
     "links": [
       { "id": "foot-privacy", "label": { "bm": "Dasar Privasi", "en": "Privacy Policy" }, "href": "/privacy", "enabled": true },
       { "id": "foot-admin", "label": { "bm": "Pentadbir", "en": "Admin" }, "href": "/admin", "enabled": true }
     ],
     "copyright": {
-      "bm": "Hak cipta terpelihara Pejabat Bendahari Agung MPP.",
+      "bm": "Hak cipta terpelihara Pejabat Bendahari Agung Kehormat JPP IPGKKB.",
       "en": "All rights reserved by the SRC Treasury Office."
     }
   },
