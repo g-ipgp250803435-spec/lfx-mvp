@@ -89,13 +89,50 @@ export function AnnouncementList({ compact = false }: { compact?: boolean }) {
         }
 
         @media (max-width: 768px) {
+          .announcement-list article {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 16px !important;
+            grid-template-columns: none !important;
+          }
+
+          .announcement-list__date {
+            display: none !important;
+          }
+
           .announcement-item-with-poster {
-            grid-template-columns: 1fr;
-            gap: 16px;
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+            display: flex !important;
+            flex-direction: column !important;
           }
 
           .announcement-item-with-poster .announcement-poster-wrapper {
-            order: -1; /* Ensure poster is at the top on mobile */
+            order: -1 !important; /* Ensure poster is at the top on mobile */
+          }
+
+          .announcement-details-container {
+            display: flex !important;
+            flex-direction: column !important;
+          }
+
+          .announcement-title {
+            order: 1 !important;
+            margin: 8px 0 4px !important;
+          }
+
+          .announcement-list__meta {
+            order: 2 !important;
+            margin-bottom: 8px !important;
+          }
+
+          .announcement-text {
+            order: 3 !important;
+          }
+
+          .announcement-actions {
+            order: 4 !important;
+            margin-top: 16px !important;
           }
         }
 
@@ -192,7 +229,7 @@ export function AnnouncementList({ compact = false }: { compact?: boolean }) {
                     >
                       <MediaImage
                         src={item.image_url}
-                        alt={t(item.title, language)}
+                        alt={language === "bm" ? `Poster pengumuman: ${t(item.title, language)}` : `Announcement poster: ${t(item.title, language)}`}
                         className="announcement-poster-img"
                         variant="poster"
                         loading="lazy"
@@ -200,14 +237,14 @@ export function AnnouncementList({ compact = false }: { compact?: boolean }) {
                     </div>
                   )}
 
-                  <div style={{ width: "100%" }}>
+                  <div className="announcement-details-container" style={{ width: "100%" }}>
                     <div className="announcement-list__meta">
                       <span>{item.category}</span>
                       <time>{formatDate(item.publish_date, language === "bm" ? "ms-MY" : "en-GB")}</time>
                     </div>
 
-                    <h3>{t(item.title, language)}</h3>
-                    <p>{t(item.content, language)}</p>
+                    <h3 className="announcement-title" style={{ margin: "8px 0 6px", font: "600 1.65rem/1.1 var(--serif)" }}>{t(item.title, language)}</h3>
+                    <p className="announcement-text">{t(item.content, language)}</p>
 
                     <div className="announcement-actions">
                       {item.attachment_url && (

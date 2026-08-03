@@ -459,8 +459,16 @@ function recordTabung_(body) {
   const admin = requireAdmin_(body.idToken);
   const type = required_(body.type, "type").toUpperCase();
   const amount = Number(body.amount);
+  if (isNaN(amount)) throw new Error("Amount must be numeric.");
+  if (amount <= 0) throw new Error("Amount must be greater than zero.");
+  const amountStr = String(body.amount);
+  if (amountStr.indexOf(".") !== -1) {
+    const decimals = amountStr.split(".")[1];
+    if (decimals.length > 2) {
+      throw new Error("Amount has unsupported decimal precision.");
+    }
+  }
   if (["COLLECTION", "DISTRIBUTION"].indexOf(type) === -1) throw new Error("Invalid fund record type.");
-  if (!(amount > 0)) throw new Error("Amount must be greater than zero.");
   const record = {
     record_id: makeId_("TBG"), type: type, amount: amount, date: required_(body.date, "date"),
     description: required_(body.description, "description"), recorded_by: admin.email, recipient: clean_(body.recipient)
