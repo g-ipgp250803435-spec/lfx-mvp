@@ -66,8 +66,8 @@ export default function OrganisationPage() {
           en: "Accountability starts with people"
         }}
         title={{
-          bm: "Organisasi Pejabat Bendahari Agung",
-          en: "Office of the Treasurer-General"
+          bm: "Organisasi Pejabat Bendahari Agung Kehormat",
+          en: "Office of the Honorary Treasurer-General"
         }}
         description={{
           bm: "Kenali pegawai, portfolio dan tanggungjawab rasmi pasukan perbendaharaan MPP.",
