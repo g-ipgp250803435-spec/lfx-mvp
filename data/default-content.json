@@ -4,17 +4,17 @@
     "shortName": "HiPER",
     "tagline": {
       "bm": "Satu platform. Semua urusan Pejabat Bendahari Agung Kehormat.",
-      "en": "One platform. All Honorary Treasurer-General Office affairs."
+      "en": "One platform. All Honorary Treasurer-General's Office affairs."
     },
     "description": {
       "bm": "Pusat operasi harian Pejabat Bendahari Agung Kehormat, Jawatankuasa Perwakilan Pelajar IPG Kampus Kota Bharu.",
-      "en": "The daily operations centre for the Office of the Honourable Treasurer-General, Student Representative Committee of IPG Kota Bharu Campus."
+      "en": "The daily operations centre for the Honorary Treasurer-General's Office, Student Representative Committee of IPG Kota Bharu Campus."
     },
     "logoUrl": "/lfx-mark.svg",
     "faviconUrl": "/favicon.svg",
     "primaryColor": "#16080c",
     "accentColor": "#c39a3b",
-    "officialEmail": "treasury@ipg.edu.my"
+    "officialEmail": "jppipgkkb.rasmi@ipg.edu.my"
   },
   "hero": {
     "eyebrow": {
@@ -67,7 +67,7 @@
       "id": "feature-ikes",
       "icon": "heart",
       "title": { "bm": "iKES", "en": "iKES" },
-      "description": { "bm": "Pinjaman kebajikan tanpa faedah yang telus dan pantas.", "en": "Transparent and efficient interest-free welfare loans." },
+      "description": { "bm": "Pinjaman kewangan tanpa faedah yang telus dan pantas.", "en": "Transparent and efficient interest-free financial loans." },
       "href": "/ikes"
     },
     {
@@ -80,7 +80,7 @@
     {
       "id": "feature-news",
       "icon": "megaphone",
-      "title": { "bm": "Pusat Pengumuman", "en": "Announcement Centre" },
+      "title": { "bm": "Pengumuman", "en": "Announcement" },
       "description": { "bm": "Semua makluman perbendaharaan dalam satu arkib rasmi.", "en": "All treasury notices in one official archive." },
       "href": "/announcements"
     }
@@ -98,14 +98,14 @@
     "accountNumber": "000000000000",
     "qrImageUrl": "/duitnow-placeholder.svg",
     "note": {
-      "bm": "Gantikan pautan pembayaran, maklumat akaun dan imej QR melalui panel admin sebelum menerima sumbangan sebenar.",
-      "en": "Replace the payment link, account details and QR image in the admin panel before accepting real contributions."
+      "bm": "Terima kasih. Sumbangan anda amatlah kami hargai.",
+      "en": "Thank you. We greatly appreciate your donation."
     }
   },
   "footer": {
     "about": {
       "bm": "Hab Perbendaharaan Digital ialah sistem operasi digital Pejabat Bendahari Agung Kehormat.",
-      "en": "Hab Perbendaharaan Digital is the digital operating system of the Office of the Honorary Treasurer-General."
+      "en": "Digital Treasury Hub is the digital operating system of the Office of the Honorary Treasurer-General."
     },
     "address": "Jawatankuasa Perwakilan Pelajar, IPG Kampus Kota Bharu",
     "links": [
