@@ -5,7 +5,7 @@ import { CmsImage } from "@/components/CmsImage";
 import { Icon } from "@/components/Icon";
 import { useApp } from "@/components/Providers";
 import { useContent } from "@/components/ContentProvider";
-import { apiGet, isDemoMode } from "@/lib/api";
+import { apiGet, apiPost, isDemoMode } from "@/lib/api";
 import { demoStore } from "@/lib/demo-store";
 import { formatDate, money, uid } from "@/lib/format";
 import { t } from "@/lib/i18n";
@@ -118,6 +118,17 @@ export function TabungDashboard({ compact = false }: { compact?: boolean }) {
         setRecords(updated);
         setShowSuccess(true);
       } else {
+        await apiPost<TabungRecord>("tabung/public-record", {
+          amount: confirmedAmount,
+          date: new Date().toISOString().slice(0, 10),
+          description: language === "bm" ? "Sumbangan Tabung Jumaat (Sumbangan Awam)" : "Friday Fund Donation (Public Donation)",
+          donor_name: "Hamba Allah",
+          payment_method: "DuitNow QR"
+        });
+        const res = await apiGet<TabungRecord[]>("tabung/list");
+        if (res.ok && res.data) {
+          setRecords(res.data);
+        }
         setShowSuccess(true);
       }
     } catch {
@@ -153,7 +164,8 @@ export function TabungDashboard({ compact = false }: { compact?: boolean }) {
     const monthDistributions = sum(distributions.filter((item) => { const d = new Date(item.date); return d.getFullYear() === currentYear && d.getMonth() === currentMonth; }));
     const annualCollections = sum(collections.filter((item) => new Date(item.date).getFullYear() === currentYear));
     const annualDistributions = sum(distributions.filter((item) => new Date(item.date).getFullYear() === currentYear));
-    return { thisWeek, monthCollections, monthDistributions, annualBalance: annualCollections - annualDistributions, distributions: distributions.slice().sort((a, b) => b.date.localeCompare(a.date)) };
+    const publicDistributions = distributions.filter((item) => item.display_on_public === true || item.display_on_public === "true" || item.display_on_public === undefined || item.display_on_public === "");
+    return { thisWeek, monthCollections, monthDistributions, annualBalance: annualCollections - annualDistributions, distributions: publicDistributions.slice().sort((a, b) => b.date.localeCompare(a.date)) };
   }, [records]);
   const target = Number(content.donation.target || 500);
   const progress = Math.min(100, target ? (summary.thisWeek / target) * 100 : 0);
@@ -192,17 +204,17 @@ export function TabungDashboard({ compact = false }: { compact?: boolean }) {
               </p>
             </div>
 
-            <div style={{ border: "1px solid var(--line)", borderRadius: "8px", padding: "15px", background: "var(--background-elevated)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                <span className="muted">{language === "bm" ? "Penerima " : "Recipient"}</span>
-                <strong>{content.donation.accountName}</strong>
+            <div style={{ border: "1px solid var(--line)", borderRadius: "8px", padding: "18px", background: "var(--background-elevated)", display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <span className="muted" style={{ fontSize: "0.75rem", textTransform: "uppercase", fontWeight: "bold", letterSpacing: "0.05em" }}>{language === "bm" ? "Penerima" : "Recipient"}</span>
+                <strong style={{ color: "var(--text-primary)", fontSize: "1.05rem", lineHeight: "1.3" }}>{content.donation.accountName}</strong>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                <span className="muted">{language === "bm" ? "Amaun Sumbangan" : "Donation Amount"}</span>
-                <strong style={{ color: "var(--accent)", fontSize: "1.15rem" }}>{money(confirmedAmount || 0)}</strong>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px dashed var(--line)", paddingTop: "12px" }}>
+                <span className="muted" style={{ fontSize: "0.75rem", textTransform: "uppercase", fontWeight: "bold", letterSpacing: "0.05em" }}>{language === "bm" ? "Amaun Sumbangan" : "Donation Amount"}</span>
+                <strong style={{ color: "var(--accent)", fontSize: "1.2rem" }}>{money(confirmedAmount || 0)}</strong>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span className="muted">{language === "bm" ? "Status" : "Status"}</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px dashed var(--line)", paddingTop: "12px" }}>
+                <span className="muted" style={{ fontSize: "0.75rem", textTransform: "uppercase", fontWeight: "bold", letterSpacing: "0.05em" }}>{language === "bm" ? "Status" : "Status"}</span>
                 <span className="status status--repaid">{language === "bm" ? "Selesai" : "Completed"}</span>
               </div>
             </div>
@@ -304,9 +316,14 @@ export function TabungDashboard({ compact = false }: { compact?: boolean }) {
                     fontWeight: "bold",
                     transition: "all 0.2s ease",
                     cursor: "pointer",
-                    gridColumn: "span 3"
+                    gridColumn: "span 3",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px"
                   }}
                 >
+                  <Icon name="wallet" size={16} />
                   {selectedAmount === "custom" ? "✓ " : ""}{language === "bm" ? "Amaun lain" : "Custom amount"}
                 </button>
               </div>
@@ -351,8 +368,6 @@ export function TabungDashboard({ compact = false }: { compact?: boolean }) {
               <Icon name="external" size={17}/>
               {language === "bm" ? "Sumbang sekarang" : "Donate now"}
             </button>
-
-            <small style={{ marginTop: "5px", display: "block", color: "var(--warning)" }}>{t(content.donation.note, language)}</small>
           </form>
         )}
         <div className="donation-qr-container" style={{ display: "flex", flexDirection: "column", gap: "15px", alignItems: "center", width: "100%" }}>

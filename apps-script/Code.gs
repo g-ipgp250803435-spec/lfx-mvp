@@ -11,7 +11,7 @@ const TABLES = {
   assets: ["asset_id", "name", "category", "image_url", "status", "description"],
   loans: ["loan_id", "asset_id", "user_id", "purpose", "request_date", "approved_by", "status", "qr_code_url", "date_borrowed", "date_returned_expected", "date_returned_actual", "rejection_reason"],
   ikes: ["application_id", "user_id", "type", "amount_requested", "ticket_proof_url", "status", "request_date", "approved_by", "notes", "amount_approved", "repayment_term_days", "decision_date", "payment_date", "repayment_due_date", "amount_repaid", "outstanding_amount", "is_overdue", "rejection_reason", "intake", "class_name", "phone_number", "bank_account_number", "bank_name"],
-  tabung: ["record_id", "type", "amount", "date", "description", "recorded_by", "recipient"],
+  tabung: ["record_id", "type", "amount", "date", "description", "recorded_by", "recipient", "donor_name", "donor_email", "reference_number", "status", "payment_method", "source", "audit_metadata", "display_on_public"],
   announcements: ["announcement_id", "title", "content", "category", "attachment_url", "publish_date", "created_by", "responsible_officer", "image_url"],
   audit: ["timestamp", "user_id", "action", "details"],
   content: ["content_key", "json_content", "updated_at", "updated_by"]
@@ -63,6 +63,8 @@ function doPost(e) {
       case "ikes/approve": return json_({ ok: true, data: withLock_(() => decideIkes_(body)) });
       case "ikes/status": return json_({ ok: true, data: withLock_(() => updateIkesStatus_(body)) });
       case "tabung/record": return json_({ ok: true, data: withLock_(() => recordTabung_(body)) });
+      case "tabung/public-record": return json_({ ok: true, data: withLock_(() => publicRecordTabung_(body)) });
+      case "tabung/toggle-visibility": return json_({ ok: true, data: withLock_(() => toggleTabungVisibility_(body)) });
       case "tabung/delete": return json_({ ok: true, data: withLock_(() => deleteTabung_(body)) });
       case "ikes/delete": return json_({ ok: true, data: withLock_(() => deleteIkes_(body)) });
       case "announcements/saveAll": return json_({ ok: true, data: withLock_(() => saveAnnouncements_(body)) });
@@ -471,11 +473,56 @@ function recordTabung_(body) {
   if (["COLLECTION", "DISTRIBUTION"].indexOf(type) === -1) throw new Error("Invalid fund record type.");
   const record = {
     record_id: makeId_("TBG"), type: type, amount: amount, date: required_(body.date, "date"),
-    description: required_(body.description, "description"), recorded_by: admin.email, recipient: clean_(body.recipient)
+    description: required_(body.description, "description"), recorded_by: admin.email, recipient: clean_(body.recipient),
+    donor_name: "", donor_email: "", reference_number: "", status: "CONFIRMED", payment_method: "Admin Manual", source: "HiPER Studio",
+    audit_metadata: "", display_on_public: "true"
   };
   appendObject_("tbl_tabung", record);
   audit_(admin.email, `TABUNG_${type}`, record);
   return record;
+}
+
+function publicRecordTabung_(body) {
+  const type = "COLLECTION";
+  const amount = Number(body.amount);
+  if (isNaN(amount)) throw new Error("Amount must be numeric.");
+  if (amount <= 0) throw new Error("Amount must be greater than zero.");
+  const amountStr = String(body.amount);
+  if (amountStr.indexOf(".") !== -1) {
+    const decimals = amountStr.split(".")[1];
+    if (decimals.length > 2) {
+      throw new Error("Amount has unsupported decimal precision.");
+    }
+  }
+  const record = {
+    record_id: makeId_("TBG"),
+    type: type,
+    amount: amount,
+    date: body.date || new Date().toISOString().slice(0, 10),
+    description: body.description || "Sumbangan Tabung Jumaat (Portal Awam)",
+    recorded_by: "public.student@ipg.edu.my",
+    recipient: "",
+    donor_name: clean_(body.donor_name) || "Hamba Allah",
+    donor_email: clean_(body.donor_email) || "",
+    reference_number: clean_(body.reference_number) || "",
+    status: "DECLARED",
+    payment_method: clean_(body.payment_method) || "DuitNow QR",
+    source: "public Tabung Jumaat page",
+    audit_metadata: JSON.stringify({ ip: body.ip || "unknown", user_agent: body.user_agent || "unknown" }),
+    display_on_public: "true"
+  };
+  appendObject_("tbl_tabung", record);
+  audit_("SYSTEM", `TABUNG_PUBLIC_DONATION`, record);
+  return record;
+}
+
+function toggleTabungVisibility_(body) {
+  const admin = requireAdmin_(body.idToken);
+  const recordId = required_(body.record_id, "record_id");
+  const value = String(body.display_on_public) === "true" ? "true" : "false";
+  updateBy_("tbl_tabung", "record_id", recordId, { display_on_public: value });
+  audit_(admin.email, "TABUNG_VISIBILITY_TOGGLED", { record_id: recordId, display_on_public: value });
+  return { record_id: recordId, display_on_public: value };
 }
 
 function deleteTabung_(body) {
