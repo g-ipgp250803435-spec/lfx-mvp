@@ -404,9 +404,11 @@ export function AdminStudio() {
 
   const saveOrgItems = async (itemsToSave: OrgItem[], officersToSave: any[]) => {
     return run(async () => {
-      // Filter out completely empty placeholder rows (i.e. rows without non-empty title)
+      // Filter out completely empty placeholder rows (i.e. rows without non-empty title or name)
       const validItems = itemsToSave.filter(item => item.title && item.title.trim() !== "");
-      if (validItems.length === 0) {
+      const validOfficers = officersToSave.filter(officer => officer.name && officer.name.trim() !== "");
+
+      if (validItems.length === 0 && validOfficers.length === 0) {
         throw new Error(language === "bm" ? "Sekurang-kurangnya satu item organisasi diperlukan." : "At least one organisation item is required.");
       }
 

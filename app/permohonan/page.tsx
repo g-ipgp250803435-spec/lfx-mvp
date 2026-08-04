@@ -41,15 +41,34 @@ export default function StudentDashboardPage() {
         const mine = all.filter((loan) => loan.user_id.toLowerCase() === currentUser.email.toLowerCase());
         setLoans(mine);
       } else {
+        // Safe diagnostic logging for the outgoing action name and parameters (without PII)
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Diagnostics] Outgoing action: loans/mine for email:", currentUser.email);
+        }
         const result = await apiPost<Loan[]>("loans/mine", { idToken: currentUser.idToken });
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Diagnostics] Action loans/mine response ok:", result.ok, "items count:", result.data?.length);
+        }
         setLoans(result.data || []);
       }
     } catch (err) {
-      setLoansError(err instanceof Error ? err.message : "Failed to load loan history");
+      const errMsg = err instanceof Error ? err.message : "Failed to load loan history";
+      // Log technical error details securely for debugging
+      console.error("[Diagnostics Error] fetchLoans failed technical details:", errMsg);
+
+      if (errMsg.toLowerCase().includes("unknown post action") || errMsg.toLowerCase().includes("unknown action") || errMsg.toLowerCase().includes("failed")) {
+        setLoansError(
+          language === "bm"
+            ? "Maklumat permohonan iAset tidak dapat diperoleh. Sila cuba lagi."
+            : "Information for iAset application could not be retrieved. Please try again."
+        );
+      } else {
+        setLoansError(errMsg);
+      }
     } finally {
       setLoansLoading(false);
     }
-  }, []);
+  }, [language]);
 
   const fetchIkes = useCallback(async (currentUser: SignedInUser | null) => {
     if (!currentUser) {

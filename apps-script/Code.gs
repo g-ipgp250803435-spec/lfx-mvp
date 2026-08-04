@@ -54,7 +54,8 @@ function doPost(e) {
       case "loans/all": return json_({ ok: true, data: adminListLoans_(body) });
       case "ikes/all": return json_({ ok: true, data: adminListIkes_(body) });
       case "ikes/mine": return json_({ ok: true, data: userListIkes_(body) });
-      case "loans/mine": return json_({ ok: true, data: userListLoans_(body) });
+      case "loans/mine":
+      case "loan/mine": return json_({ ok: true, data: userListLoans_(body) });
       case "ikes/repayment": return json_({ ok: true, data: withLock_(() => ikesRepayment_(body)) });
       case "loan/request": return json_({ ok: true, data: withLock_(() => requestLoan_(body)) });
       case "loan/approve": return json_({ ok: true, data: withLock_(() => decideLoan_(body)) });
