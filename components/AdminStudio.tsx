@@ -453,7 +453,7 @@ export function AdminStudio() {
     }, language === "bm" ? "Kandungan organisasi berjaya disimpan." : "Organisation content saved.");
   };
 
-  if (!user || !session) return <div className="admin-login"><div className="admin-login__panel"><Image src="/lfx-mark.svg" alt="HiPER" width={90} height={90}/><span className="eyebrow">HiPER Studio</span><h1>Selamat Datang, Pentadbir!" : "Welcome, Adminstrator!"</h1><p>{language === "bm" ? "Log masuk menggunakan akaun DELIMa Pentadbir." : "Sign in using the Administrator's DELIMa account."}</p><GoogleAuth onUser={setUser}/>{checking && <p className="muted">Verifying role…</p>}<FlashMessage flash={flash}/></div></div>;
+  if (!user || !session) return <div className="admin-login"><div className="admin-login__panel"><Image src="/lfx-mark.svg" alt="HiPER" width={90} height={90}/><span className="eyebrow">v1.0</span><h1>HiPER Studio</h1><p>{language === "bm" ? "Log masuk menggunakan akaun DELIMa Pentadbir." : "Sign in using the Administrator's DELIMa account."}</p><GoogleAuth onUser={setUser}/>{checking && <p className="muted">Verifying role…</p>}<FlashMessage flash={flash}/></div></div>;
 
   const tabs: Array<{ id: Tab; icon: string; bm: string; en: string }> = [
     { id: "overview", icon: "chart", bm: "Ringkasan", en: "Overview" },
