@@ -1,0 +1,19 @@
+* main                                                                                  40c2b98 [origin/main] Merge pull request #16 from g-ipgp250803435-spec/fix-hiper-issues-7556420930012454103
+  remotes/origin/HEAD                                                                   -> origin/main
+  remotes/origin/enhance-hiper-modules-7813725594226444171                              e9fa865 Enhance Pengumuman uploads, Tabung record deletion, currency formatting, iKES cards background, and Ringkasan charts and cards
+  remotes/origin/feat/ikes-organisation-updates-9852898863564139962                     f1f6aa4 feat: implement iKES improvements and Organisation directory with admin editor
+  remotes/origin/feature/hiper-improvements-11692893843120243148                        63f63a4 Improve iKES Record Management, Organisational Charts, Pengumuman Posters, Homepage Spacing, Footer Status, and Theme Contrast.
+  remotes/origin/feature/hiper-improvements-3515416465495586869                         ef5e113 feat: improve public footer, mobile nav, tabung jumaat layout, and admin login theme
+  remotes/origin/feature/simplify-header-footer-announcement-tabung-9301888229773313180 e36dd66 Simplify layouts, fix contrast & add flexible Tabung Jumaat donations
+  remotes/origin/fix-dark-mode-contrast-and-image-previews-3091898907874964992          eb270de fix: resolve dark-mode contrast and blank uploaded image previews
+  remotes/origin/fix-hiper-issues-7556420930012454103                                   d5bc687 Fix iAset loans, Tabung Jumaat, Pengumuman posters, and Organisasi validation
+  remotes/origin/fix-ikes-org-12207894999882590706                                      bcf8ae8 fix(ikes, organisation): show detailed iKES data and resolve org page black-screen crash
+  remotes/origin/fix/contrast-and-image-previews-1537810460313130828                    5889a96 fix: improve dark mode contrast and fix blank white image previews across HiPER
+  remotes/origin/improve-homepage-studio-donation-org-18080693131995217004              d3eb5c9 Improve Homepage Donation Highlight, Mobile Studio UX, Tabung Jumaat Data Flow, Pengumuman Media, and Organisasi Form Validation
+  remotes/origin/jules-10149613537178248664-ee31be26                                    771799e fix: resolve React and ESLint set-state-in-effect and routing errors
+  remotes/origin/jules-12240174904686783637-aff4bf16                                    dcc71fd feat: implement secure student application tracking, reusable admin media uploader, accessible rejection dialogs, lightweight dashboard charts, daily overdue triggers, and typed bilingual content-page builder
+  remotes/origin/jules-3084695869407194968-d3272b50                                     05b9347 fix: permanently eliminate old content flash on first page load
+  remotes/origin/jules-5529486647678969927-292d6f82                                     3a232bf feat: implement student iKES application-status and admin repayment flows
+  remotes/origin/main                                                                   40c2b98 Merge pull request #16 from g-ipgp250803435-spec/fix-hiper-issues-7556420930012454103
+  remotes/origin/maroon-gold-theme-nav-16296850485271644289                             c5d05b0 feat: implement dark maroon and gold theme, fix background issue, and optimize responsive navigation bar
+  remotes/origin/theme-fix-and-branding-update-6766992347218035701                      c267eb3 Fix light/dark theme styling, iKES admin transparent card, and rebrand to Hab Perbendaharaan Digital / HiPER

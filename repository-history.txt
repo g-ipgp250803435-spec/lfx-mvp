@@ -1,0 +1,98 @@
+*   40c2b98 (HEAD -> main, origin/main, origin/HEAD) Merge pull request #16 from g-ipgp250803435-spec/fix-hiper-issues-7556420930012454103
+|\  
+| * d5bc687 (origin/fix-hiper-issues-7556420930012454103) Fix iAset loans, Tabung Jumaat, Pengumuman posters, and Organisasi validation
+|/  
+* 7127807 Update AdminStudio.tsx
+* 01b7a52 Update AdminStudio.tsx
+* 3fda8a7 Update AdminStudio.tsx
+*   b48afa4 Merge pull request #15 from g-ipgp250803435-spec/improve-homepage-studio-donation-org-18080693131995217004
+|\  
+| * d3eb5c9 (origin/improve-homepage-studio-donation-org-18080693131995217004) Improve Homepage Donation Highlight, Mobile Studio UX, Tabung Jumaat Data Flow, Pengumuman Media, and Organisasi Form Validation
+|/  
+* 67d532b Update TabungDashboard.tsx
+* a1fb221 Update default-content.json
+* 9e849e8 Update default-content.json
+* 84de063 Update default-content.json
+* fa0fff6 Update SiteShell.tsx
+*   7f468b6 Merge pull request #14 from g-ipgp250803435-spec/feature/hiper-improvements-3515416465495586869
+|\  
+| * ef5e113 (origin/feature/hiper-improvements-3515416465495586869) feat: improve public footer, mobile nav, tabung jumaat layout, and admin login theme
+|/  
+*   0199ff7 Merge pull request #13 from g-ipgp250803435-spec/jules-3084695869407194968-d3272b50
+|\  
+| * 05b9347 (origin/jules-3084695869407194968-d3272b50) fix: permanently eliminate old content flash on first page load
+|/  
+* a5c7707 Update default-content.json
+* fee0b53 Update page.tsx
+* c77b22b Update page.tsx
+* a777aba Update page.tsx
+* 1847164 Update page.tsx
+* 1b1ae47 Update page.tsx
+* 54407d0 Update page.tsx
+* df1d7b1 Update page.tsx
+* bad2fd7 Update i18n.ts
+* 410b74d Update page.tsx
+* 621a54c Update page.tsx
+*   d3c3d03 Merge pull request #12 from g-ipgp250803435-spec/feature/simplify-header-footer-announcement-tabung-9301888229773313180
+|\  
+| * e36dd66 (origin/feature/simplify-header-footer-announcement-tabung-9301888229773313180) Simplify layouts, fix contrast & add flexible Tabung Jumaat donations
+|/  
+* 2032dd9 Add files via upload
+* 9ad7ab5 Add files via upload
+*   b40a507 Merge pull request #11 from g-ipgp250803435-spec/fix/contrast-and-image-previews-1537810460313130828
+|\  
+| * 5889a96 (origin/fix/contrast-and-image-previews-1537810460313130828) fix: improve dark mode contrast and fix blank white image previews across HiPER
+|/  
+*   07289a6 Merge pull request #10 from g-ipgp250803435-spec/fix-dark-mode-contrast-and-image-previews-3091898907874964992
+|\  
+| * eb270de (origin/fix-dark-mode-contrast-and-image-previews-3091898907874964992) fix: resolve dark-mode contrast and blank uploaded image previews
+|/  
+*   6d5ed81 Merge pull request #9 from g-ipgp250803435-spec/feature/hiper-improvements-11692893843120243148
+|\  
+| * 63f63a4 (origin/feature/hiper-improvements-11692893843120243148) Improve iKES Record Management, Organisational Charts, Pengumuman Posters, Homepage Spacing, Footer Status, and Theme Contrast.
+* | c0406a4 Update default-content.json
+* | 698cbd7 Update page.tsx
+* | 2346d4a Update LoanForm.tsx
+|/  
+* 149441c Update page.tsx
+* 0be8592 Update page.tsx
+* cad1e74 Update page.tsx
+*   96c6e1b Merge pull request #8 from g-ipgp250803435-spec/enhance-hiper-modules-7813725594226444171
+|\  
+| * e9fa865 (origin/enhance-hiper-modules-7813725594226444171) Enhance Pengumuman uploads, Tabung record deletion, currency formatting, iKES cards background, and Ringkasan charts and cards
+|/  
+*   bdecaa7 Merge pull request #7 from g-ipgp250803435-spec/theme-fix-and-branding-update-6766992347218035701
+|\  
+| * c267eb3 (origin/theme-fix-and-branding-update-6766992347218035701) Fix light/dark theme styling, iKES admin transparent card, and rebrand to Hab Perbendaharaan Digital / HiPER
+|/  
+*   afcff97 Merge pull request #6 from g-ipgp250803435-spec/maroon-gold-theme-nav-16296850485271644289
+|\  
+| * c5d05b0 (origin/maroon-gold-theme-nav-16296850485271644289) feat: implement dark maroon and gold theme, fix background issue, and optimize responsive navigation bar
+|/  
+* 7e6494f Update Code.gs
+* f9df0a4 Update IkesForm.tsx
+*   c5d9ab2 Merge pull request #5 from g-ipgp250803435-spec/fix-ikes-org-12207894999882590706
+|\  
+| * bcf8ae8 (origin/fix-ikes-org-12207894999882590706) fix(ikes, organisation): show detailed iKES data and resolve org page black-screen crash
+|/  
+*   10ed8dd Merge pull request #4 from g-ipgp250803435-spec/jules-12240174904686783637-aff4bf16
+|\  
+| * dcc71fd (origin/jules-12240174904686783637-aff4bf16) feat: implement secure student application tracking, reusable admin media uploader, accessible rejection dialogs, lightweight dashboard charts, daily overdue triggers, and typed bilingual content-page builder
+|/  
+*   25b7feb Merge pull request #3 from g-ipgp250803435-spec/feat/ikes-organisation-updates-9852898863564139962
+|\  
+| * f1f6aa4 (origin/feat/ikes-organisation-updates-9852898863564139962) feat: implement iKES improvements and Organisation directory with admin editor
+|/  
+*   85e8760 Merge pull request #2 from g-ipgp250803435-spec/jules-5529486647678969927-292d6f82
+|\  
+| * 3a232bf (origin/jules-5529486647678969927-292d6f82) feat: implement student iKES application-status and admin repayment flows
+|/  
+* 5f7056e Delete apps-script/Code1.gs
+* 28e8294 Create Code1.gs
+* 664b826 Update lfx-mark.svg
+* b34a0f1 Update globals.css
+* dda420a Update globals.css
+* 0f4de1b Update globals.css
+| * 771799e (origin/jules-10149613537178248664-ee31be26) fix: resolve React and ESLint set-state-in-effect and routing errors
+|/  
+* 81dcfc0 Add files via upload
