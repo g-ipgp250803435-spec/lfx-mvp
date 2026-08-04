@@ -12,3 +12,11 @@
  GET / 200 in 739ms (next.js: 562ms, application-code: 177ms)
  GET /announcements 200 in 584ms (next.js: 496ms, application-code: 89ms)
  GET /organisation 200 in 885ms (next.js: 681ms, application-code: 205ms)
+ HEAD / 200 in 712ms (next.js: 114ms, application-code: 598ms)
+ GET / 200 in 204ms (next.js: 11ms, application-code: 193ms)
+ GET /tabung-jumaat 200 in 101ms (next.js: 14ms, application-code: 86ms)
+ GET /organisation 200 in 100ms (next.js: 8ms, application-code: 92ms)
+○ Compiling /admin ...
+ GET /admin 200 in 4.3s (next.js: 4.2s, application-code: 154ms)
+[browser] Image with src "/lfx-mark.svg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading

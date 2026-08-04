@@ -441,13 +441,13 @@ export function AdminStudio() {
 
       const payload = {
         items: itemsWithBothFields,
-        officers: officersToSave
+        officers: validOfficers
       };
 
       if (isDemoMode) {
         demoStore.saveOrganisationItems(payload);
         setOrganisationItems(itemsWithBothFields);
-        setOrganisationOfficers(officersToSave);
+        setOrganisationOfficers(validOfficers);
       } else if (user) {
         await apiPost("organisation/saveAll", { idToken: user.idToken, payload });
         await loadOrgItems();
