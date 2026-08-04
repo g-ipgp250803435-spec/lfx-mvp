@@ -19,7 +19,8 @@ export function AnnouncementList({ compact = false }: { compact?: boolean }) {
   useEffect(() => {
     const load = async () => {
       try {
-        setItems(isDemoMode ? demoStore.getAnnouncements() : (await apiGet<Announcement[]>("announcements/list")).data || []);
+        // Appending timestamp to bypass browser cache and fetch latest announcements/posters instantly
+        setItems(isDemoMode ? demoStore.getAnnouncements() : (await apiGet<Announcement[]>("announcements/list", { t: Date.now().toString() })).data || []);
       } catch {
         setItems(demoStore.getAnnouncements());
       }
@@ -206,7 +207,15 @@ export function AnnouncementList({ compact = false }: { compact?: boolean }) {
       <div className="announcement-list">
         {visible.length ? (
           visible.map((item) => {
-            const hasPoster = !!item.image_url;
+            const announcementMedia =
+              item.image_url ||
+              (item as unknown as Record<string, string>).posterMedia ||
+              (item as unknown as Record<string, string>).media ||
+              (item as unknown as Record<string, string>).legacyAttachment ||
+              (item.attachment_url && /\.(png|jpg|jpeg|webp|gif|svg)/i.test(item.attachment_url) ? item.attachment_url : null) ||
+              null;
+
+            const hasPoster = !!announcementMedia;
 
             return (
               <article id={item.announcement_id} key={item.announcement_id}>
@@ -224,11 +233,11 @@ export function AnnouncementList({ compact = false }: { compact?: boolean }) {
                   {hasPoster && (
                     <div
                       className="announcement-poster-wrapper"
-                      onClick={() => setSelectedImage(item.image_url || null)}
+                      onClick={() => setSelectedImage(announcementMedia)}
                       title={language === "bm" ? "Klik untuk besarkan" : "Click to enlarge"}
                     >
                       <MediaImage
-                        src={item.image_url}
+                        src={announcementMedia}
                         alt={language === "bm" ? `Poster pengumuman: ${t(item.title, language)}` : `Announcement poster: ${t(item.title, language)}`}
                         className="announcement-poster-img"
                         variant="poster"
@@ -247,7 +256,7 @@ export function AnnouncementList({ compact = false }: { compact?: boolean }) {
                     <p className="announcement-text">{t(item.content, language)}</p>
 
                     <div className="announcement-actions">
-                      {item.attachment_url && (
+                      {item.attachment_url && item.attachment_url !== announcementMedia && (
                         <a href={item.attachment_url} target="_blank" rel="noreferrer" className="text-link">
                           <Icon name="file" size={16} />
                           {language === "bm" ? "Lampiran" : "Attachment"}

@@ -108,8 +108,8 @@ html[data-theme="dark"] {
   --background: #16080c;
   --background-elevated: #210b12;
 
-  --surface: #2a1018;
-  --surface-hover: #351720;
+  --surface: #31141d;
+  --surface-hover: #3a1823;
   --surface-muted: #211017;
 
   --maroon-900: #2a0811;
@@ -688,8 +688,8 @@ label small { color: var(--muted); font-size: .7rem; }
   --background: #16080c;
   --background-elevated: #210b12;
 
-  --surface: #2a1018;
-  --surface-hover: #351720;
+  --surface: #31141d;
+  --surface-hover: #3a1823;
   --surface-muted: #211017;
 
   --maroon-900: #2a0811;

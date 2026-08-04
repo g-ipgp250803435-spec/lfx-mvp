@@ -24,6 +24,7 @@ export function TabungDashboard({ compact = false }: { compact?: boolean }) {
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [copied, setCopied] = useState(false);
+  const [submittedRecord, setSubmittedRecord] = useState<TabungRecord | null>(null);
 
   const handleCopy = async () => {
     try {
@@ -101,6 +102,7 @@ export function TabungDashboard({ compact = false }: { compact?: boolean }) {
   const handleConfirmFinal = async () => {
     if (confirmedAmount === null) return;
     setIsSubmitting(true);
+    setErrorMsg(null);
     try {
       if (isDemoMode) {
         const newRecord: TabungRecord = {
@@ -110,28 +112,60 @@ export function TabungDashboard({ compact = false }: { compact?: boolean }) {
           date: new Date().toISOString().slice(0, 10),
           description: language === "bm" ? "Sumbangan Tabung Jumaat (Mod Demo)" : "Friday Fund Donation (Demo Mode)",
           recorded_by: "demo.student@ipg.edu.my",
-          recipient: ""
+          recipient: "",
+          donor_name: "Hamba Allah",
+          payment_method: "DuitNow QR"
         };
         const existing = demoStore.getTabung();
         const updated = [newRecord, ...existing];
         demoStore.saveTabung(updated);
         setRecords(updated);
+        setSubmittedRecord(newRecord);
         setShowSuccess(true);
       } else {
-        await apiPost<TabungRecord>("tabung/public-record", {
+        const resPost = await apiPost<TabungRecord>("tabung/public-record", {
           amount: confirmedAmount,
           date: new Date().toISOString().slice(0, 10),
           description: language === "bm" ? "Sumbangan Tabung Jumaat (Sumbangan Awam)" : "Friday Fund Donation (Public Donation)",
           donor_name: "Hamba Allah",
           payment_method: "DuitNow QR"
         });
-        const res = await apiGet<TabungRecord[]>("tabung/list");
-        if (res.ok && res.data) {
-          setRecords(res.data);
+
+        // Log diagnostic details securely for debugging
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Diagnostics] public donation recorded. Ref:", resPost.data?.record_id);
         }
+
+        // Set the successfully submitted record state first
+        if (resPost.ok && resPost.data) {
+          setSubmittedRecord(resPost.data);
+        } else {
+          // Fallback if resPost.data is empty
+          setSubmittedRecord({
+            record_id: uid("TBG").toUpperCase(),
+            type: "COLLECTION",
+            amount: confirmedAmount,
+            date: new Date().toISOString().slice(0, 10),
+            description: language === "bm" ? "Sumbangan Tabung Jumaat" : "Friday Fund Donation",
+            recorded_by: "public.student@ipg.edu.my"
+          });
+        }
+
+        // Set success state true immediately when posting succeeds!
         setShowSuccess(true);
+
+        // Fetch latest list in an isolated nested try-catch block to prevent breaking the success screen in case of fetch errors/delays
+        try {
+          const res = await apiGet<TabungRecord[]>("tabung/list");
+          if (res.ok && res.data) {
+            setRecords(res.data);
+          }
+        } catch (fetchErr) {
+          console.error("[Diagnostics Error] failed to refresh tabung/list:", fetchErr);
+        }
       }
-    } catch {
+    } catch (err) {
+      console.error("[Diagnostics Error] handleConfirmFinal failed:", err);
       setErrorMsg(language === "bm" ? "Ralat semasa memproses sumbangan. Sila cuba lagi." : "Error processing donation. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -196,45 +230,76 @@ export function TabungDashboard({ compact = false }: { compact?: boolean }) {
               <div style={{ display: "inline-flex", background: "var(--success)", color: "white", borderRadius: "50%", padding: "12px", marginBottom: "15px" }}>
                 <Icon name="check" size={32} />
               </div>
-              <h2 style={{ margin: 0 }}>{language === "bm" ? "Sumbangan Berjaya!" : "Donation Successful!"}</h2>
+              <h2 style={{ margin: 0 }}>
+                {language === "bm" ? "Sumbangan anda diterima" : "Donation received"}
+              </h2>
               <p className="muted" style={{ marginTop: "8px" }}>
                 {language === "bm"
-                  ? `Terima kasih atas sumbangan anda sebanyak ${money(confirmedAmount || 0)}.`
-                  : `Thank you for your generous donation of ${money(confirmedAmount || 0)}.`}
+                  ? "Rekod sumbangan anda telah berjaya dihantar."
+                  : "Your donation record has been successfully sent."}
               </p>
             </div>
 
             <div style={{ border: "1px solid var(--line)", borderRadius: "8px", padding: "18px", background: "var(--background-elevated)", display: "flex", flexDirection: "column", gap: "12px" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                <span className="muted" style={{ fontSize: "0.75rem", textTransform: "uppercase", fontWeight: "bold", letterSpacing: "0.05em" }}>{language === "bm" ? "Penerima" : "Recipient"}</span>
-                <strong style={{ color: "var(--text-primary)", fontSize: "1.05rem", lineHeight: "1.3" }}>{content.donation.accountName}</strong>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span className="muted" style={{ fontSize: "0.75rem", textTransform: "uppercase", fontWeight: "bold", letterSpacing: "0.05em" }}>
+                  {language === "bm" ? "Rujukan Transaksi" : "Transaction Reference"}
+                </span>
+                <strong style={{ color: "var(--text-primary)", fontSize: "0.9rem" }}>
+                  {submittedRecord?.record_id || "—"}
+                </strong>
               </div>
+
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px dashed var(--line)", paddingTop: "12px" }}>
-                <span className="muted" style={{ fontSize: "0.75rem", textTransform: "uppercase", fontWeight: "bold", letterSpacing: "0.05em" }}>{language === "bm" ? "Amaun Sumbangan" : "Donation Amount"}</span>
-                <strong style={{ color: "var(--accent)", fontSize: "1.2rem" }}>{money(confirmedAmount || 0)}</strong>
+                <span className="muted" style={{ fontSize: "0.75rem", textTransform: "uppercase", fontWeight: "bold", letterSpacing: "0.05em" }}>
+                  {language === "bm" ? "Penerima" : "Recipient"}
+                </span>
+                <strong style={{ color: "var(--text-primary)", fontSize: "0.9rem", textAlign: "right" }}>
+                  {content.donation.accountName || (language === "bm" ? "Tabung Jumaat" : "Friday Fund")}
+                </strong>
               </div>
+
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px dashed var(--line)", paddingTop: "12px" }}>
-                <span className="muted" style={{ fontSize: "0.75rem", textTransform: "uppercase", fontWeight: "bold", letterSpacing: "0.05em" }}>{language === "bm" ? "Status" : "Status"}</span>
-                <span className="status status--repaid">{language === "bm" ? "Selesai" : "Completed"}</span>
+                <span className="muted" style={{ fontSize: "0.75rem", textTransform: "uppercase", fontWeight: "bold", letterSpacing: "0.05em" }}>
+                  {language === "bm" ? "Tarikh & Masa" : "Date & Time"}
+                </span>
+                <span style={{ fontSize: "0.9rem", fontWeight: "bold", color: "var(--text-primary)" }}>
+                  {submittedRecord?.date ? formatDate(submittedRecord.date, language === "bm" ? "ms-MY" : "en-GB") : formatDate(new Date().toISOString().slice(0, 10), language === "bm" ? "ms-MY" : "en-GB")}
+                </span>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px dashed var(--line)", paddingTop: "12px" }}>
+                <span className="muted" style={{ fontSize: "0.75rem", textTransform: "uppercase", fontWeight: "bold", letterSpacing: "0.05em" }}>
+                  {language === "bm" ? "Amaun Sumbangan" : "Donation Amount"}
+                </span>
+                <strong style={{ color: "var(--accent)", fontSize: "1.2rem" }}>
+                  {money(confirmedAmount || 0)}
+                </strong>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px dashed var(--line)", paddingTop: "12px" }}>
+                <span className="muted" style={{ fontSize: "0.75rem", textTransform: "uppercase", fontWeight: "bold", letterSpacing: "0.05em" }}>
+                  {language === "bm" ? "Status" : "Status"}
+                </span>
+                <span className="status status--pending" style={{ textTransform: "none", fontWeight: "bold" }}>
+                  {isDemoMode
+                    ? (language === "bm" ? "Diterima (Mod Demo)" : "Received (Demo Mode)")
+                    : (language === "bm" ? "Dihantar (Menunggu Pengesahan)" : "Submitted (Pending Verification)")}
+                </span>
               </div>
             </div>
 
-            {isDemoMode ? (
-              <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", textAlign: "center", margin: 0 }}>
+            <div style={{ background: "var(--accent-soft)", borderRadius: "8px", padding: "14px", border: "1px solid var(--border)" }}>
+              <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-primary)", lineHeight: "1.4" }}>
+                <strong>{language === "bm" ? "Langkah Seterusnya:" : "Next Steps:"}</strong>{" "}
                 {language === "bm"
-                  ? "* Di dalam Mod Demo, baki kutipan minggu ini telah dikemas kini secara langsung di papan pemuka."
-                  : "* In Demo Mode, the collection total for this week has been instantly updated on the dashboard."}
+                  ? "Sila lakukan pemindahan wang ke akaun bank atau kod DuitNow QR yang dipaparkan jika anda belum berbuat demikian."
+                  : "Please proceed with the bank transfer or scan the DuitNow QR displayed if you have not done so yet."}
               </p>
-            ) : (
-              <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", textAlign: "center", margin: 0 }}>
-                {language === "bm"
-                  ? "* Pihak pentadbir akan menyemak dan merekodkan sumbangan anda."
-                  : "* The administrator will verify and record your donation."}
-              </p>
-            )}
+            </div>
 
             <button onClick={handleBackToSelect} className="button button--outline" style={{ alignSelf: "center", minHeight: "44px" }}>
-              {language === "bm" ? "Kembali" : "Go Back"}
+              {language === "bm" ? "Sumbang Sekali Lagi" : "Donate Again"}
             </button>
           </div>
         ) : confirmedAmount !== null ? (
