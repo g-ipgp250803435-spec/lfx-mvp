@@ -33,7 +33,27 @@ export async function POST(request: NextRequest) {
   const { url, key } = config();
   if (!url) return NextResponse.json({ ok: false, demo: true, error: "LFX_API_URL is not configured." }, { status: 503 });
   try {
-    const body = await request.json() as Record<string, unknown>;
+    const body = (await request.json()) as {
+      action?: string;
+      content?: {
+        site?: {
+          officialEmail?: string;
+        };
+      };
+      [key: string]: unknown;
+    };
+
+    // Server-side validation for officialEmail
+    if (body.action === "content/save" && body.content && body.content.site) {
+      const officialEmail = body.content.site.officialEmail;
+      if (officialEmail && officialEmail.trim() !== "") {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(officialEmail)) {
+          return NextResponse.json({ ok: false, error: "Masukkan alamat e-mel yang sah." }, { status: 400 });
+        }
+      }
+    }
+
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },

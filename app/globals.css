@@ -515,8 +515,25 @@ label small { color: var(--muted); font-size: .7rem; }
 .donation-card h2, .records-card h2 { margin: 11px 0; font: 600 2.25rem/1.05 var(--serif); }
 .donation-card p { color: var(--muted); }
 .donation-card > div:first-child > small { display: block; color: var(--warning); margin-top: 19px; font-size: .7rem; }
-.donation-qr { display: flex; align-items: center; flex-direction: column; gap: 7px; padding: 13px; border-radius: 19px; background: #fff; color: #17211e; }
-.donation-qr img { width: 190px; height: 190px; object-fit: contain; }
+.donation-qr {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 7px;
+  padding: 13px;
+  border-radius: 19px;
+  background: #fff;
+  color: #17211e;
+  width: clamp(180px, 40vw, 280px);
+  height: auto;
+  margin-inline: auto;
+}
+.donation-qr img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+}
 .donation-qr span { font-weight: 850; font-size: .72rem; }
 .bank-details { display: grid; max-width: 380px; margin-top: 20px; padding: 15px; border: 1px solid var(--line); border-radius: 12px; }
 .bank-details span { color: var(--muted); font-size: .72rem; }
@@ -626,7 +643,65 @@ label small { color: var(--muted); font-size: .7rem; }
 .loan-pass dd { margin: 0; font-weight: 700; }
 
 /* Admin */
-.admin-login { min-height: 100vh; display: grid; place-items: center; padding: 25px; background: radial-gradient(circle at 15% 15%, #3d0c18 0, #16080c 34%, #110509 100%); color: #fff; }
+.admin-login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 25px;
+  background: radial-gradient(circle at 15% 15%, #3d0c18 0, #16080c 34%, #110509 100%);
+  color: #fff;
+
+  --background: #16080c;
+  --background-elevated: #210b12;
+
+  --surface: #2a1018;
+  --surface-hover: #351720;
+  --surface-muted: #211017;
+
+  --maroon-900: #2a0811;
+  --maroon-800: #3d0c18;
+  --maroon-700: #571322;
+  --maroon-600: #741d30;
+
+  --gold-700: #8f6b22;
+  --gold-600: #ad842d;
+  --gold-500: #c39a3b;
+  --gold-400: #d4b15b;
+  --gold-300: #e1c77d;
+
+  --text-primary: #fffaf3;
+  --text-secondary: #ddd1cc;
+  --text-muted: #b8a8aa;
+  --text-accent: #dfbd69;
+  --link: #e5c878;
+  --link-hover: #f1d992;
+
+  --border: rgba(212, 177, 91, 0.24);
+  --border-strong: rgba(212, 177, 91, 0.45);
+
+  --focus-ring: var(--link-hover);
+  --danger: #e06a72;
+  --success: #72b68b;
+  --warning: #d8aa54;
+
+  /* Legacy mappings */
+  --brand: var(--maroon-900);
+  --brand-2: var(--text-accent);
+  --brand-soft: var(--surface-muted);
+  --accent: var(--text-accent);
+  --accent-soft: rgba(223, 189, 105, 0.15);
+  --ink: var(--text-primary);
+  --muted: var(--text-muted);
+  --paper: var(--background);
+  --soft: var(--background-elevated);
+  --line: var(--border);
+  --shadow: 0 24px 70px rgba(0, 0, 0, .5);
+  --shadow-sm: 0 10px 35px rgba(0, 0, 0, .35);
+
+  --bg: var(--surface);
+  --soft-bg: var(--soft);
+  --text: var(--text-primary);
+}
 .admin-login__panel { width: min(540px, 100%); padding: 45px; border: 1px solid rgba(255,255,255,.14); border-radius: 32px; background: rgba(22, 8, 12, .68); backdrop-filter: blur(20px); box-shadow: 0 30px 90px rgba(0,0,0,.35); text-align: center; }
 .admin-login__panel > img { filter: drop-shadow(0 15px 25px rgba(0,0,0,.25)); }
 .admin-login__panel h1 { margin: 12px 0; font: 600 2.7rem/1 var(--serif); }
@@ -922,4 +997,17 @@ label small { color: var(--muted); font-size: .7rem; }
   border: 1px dashed var(--line);
   border-radius: var(--radius-lg);
   color: var(--muted);
+}
+
+/* HiPER Mobile Utilities */
+.mobile-only {
+  display: none !important;
+}
+@media (max-width: 960px) {
+  .mobile-only {
+    display: flex !important;
+  }
+  .nav .language-switch {
+    display: flex !important;
+  }
 }

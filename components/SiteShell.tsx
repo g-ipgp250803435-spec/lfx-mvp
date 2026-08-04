@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Icon } from "@/components/Icon";
 import { CmsImage } from "@/components/CmsImage";
 import { useApp } from "@/components/Providers";
@@ -14,6 +14,16 @@ export function Header() {
   const { content } = useContent();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const wasOpenRef = useRef(open);
+
+  useEffect(() => {
+    if (wasOpenRef.current && !open) {
+      menuButtonRef.current?.focus();
+    }
+    wasOpenRef.current = open;
+  }, [open]);
 
   // Close on Escape key press
   useEffect(() => {
@@ -64,6 +74,7 @@ export function Header() {
           <Link href="/permohonan" className="button button--small button--outline"><Icon name="briefcase" size={17}/>{language === "bm" ? "Permohonan Saya" : "My Applications"}</Link>
           <Link href="/admin" className="button button--small button--outline"><Icon name="user" size={17}/>{labels.admin}</Link>
           <button
+            ref={menuButtonRef}
             className="menu-button"
             onClick={() => setOpen(!open)}
             aria-label={menuLabel}
@@ -77,6 +88,56 @@ export function Header() {
       <nav id="navigation-menu" className={`nav ${open ? "nav--open" : ""}`}>
         <div className="container nav__inner">
           {content.navigation.filter((item) => item.enabled).map((item) => <Link key={item.id} href={item.href} onClick={() => setOpen(false)} className={item.href === "/" ? pathname === "/" ? "active" : "" : pathname.startsWith(item.href) ? "active" : ""}>{t(item.label, language)}</Link>)}
+
+          <hr className="nav-divider mobile-only" style={{ border: "0", borderTop: "1px solid var(--line)", margin: "12px 16px", width: "calc(100% - 32px)" }} />
+
+          <div className="nav-mobile-section mobile-only" style={{ width: "100%" }}>
+            <div className="nav-mobile-language-switch" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", minHeight: "44px" }}>
+              <span className="language-label" style={{ fontSize: "0.86rem", fontWeight: 750, color: "var(--muted)" }}>
+                {language === "bm" ? "Bahasa" : "Language"}
+              </span>
+              <div className="language-switch" role="group" aria-label="Language" style={{ display: "flex" }}>
+                <button
+                  className={language === "bm" ? "active" : ""}
+                  onClick={() => setLanguage("bm")}
+                  aria-label="Bahasa Melayu"
+                  aria-current={language === "bm" ? "true" : "false"}
+                  style={{ minWidth: "44px", minHeight: "36px" }}
+                >
+                  BM
+                </button>
+                <button
+                  className={language === "en" ? "active" : ""}
+                  onClick={() => setLanguage("en")}
+                  aria-label="English"
+                  aria-current={language === "en" ? "true" : "false"}
+                  style={{ minWidth: "44px", minHeight: "36px" }}
+                >
+                  EN
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <Link
+            href="/permohonan"
+            onClick={() => setOpen(false)}
+            className={`mobile-only ${pathname.startsWith("/permohonan") ? "active" : ""}`}
+            style={{ display: "flex", gap: "8px", alignItems: "center" }}
+          >
+            <Icon name="briefcase" size={17}/>
+            {language === "bm" ? "Permohonan Saya" : "My Applications"}
+          </Link>
+
+          <Link
+            href="/admin"
+            onClick={() => setOpen(false)}
+            className={`mobile-only ${pathname.startsWith("/admin") ? "active" : ""}`}
+            style={{ display: "flex", gap: "8px", alignItems: "center" }}
+          >
+            <Icon name="user" size={17}/>
+            {labels.admin}
+          </Link>
         </div>
       </nav>
     </header>
@@ -92,7 +153,35 @@ export function Footer() {
     <div className="container footer__grid">
       <div className="footer__brand"><CmsImage src={content.site.logoUrl || "/lfx-mark.svg"} alt="HiPER" className="footer-logo"/><div><strong>{content.site.name}</strong><p>{t(content.footer.about, language)}</p></div></div>
       <div><h3>{language === "bm" ? "Pautan" : "Links"}</h3>{content.footer.links.filter((item) => item.enabled).map((item) => <Link key={item.id} href={item.href}>{t(item.label, language)}</Link>)}</div>
-      <div><h3>{language === "bm" ? "Hubungi" : "Contact"}</h3><p>{content.footer.address}</p><a href={`mailto:${content.site.officialEmail}`}>{content.site.officialEmail}</a></div>
+      {((content.footer.address && content.footer.address.trim().length > 0) || (content.site.officialEmail && content.site.officialEmail.trim().length > 0)) && (
+        <div>
+          <h3>{language === "bm" ? "Hubungi" : "Contact"}</h3>
+          {content.footer.address && content.footer.address.trim().length > 0 && (
+            <div className="footer-address" style={{ fontSize: ".84rem", lineHeight: "1.4", color: "var(--footer-link-color)" }}>
+              {(() => {
+                const address = content.footer.address || "";
+                const lines = address.split("\n");
+                let foundFirstNonEmpty = false;
+                return lines.map((line, idx) => {
+                  const trimmed = line.trim();
+                  if (!trimmed) {
+                    if (!foundFirstNonEmpty) return null;
+                    return <br key={idx} />;
+                  }
+                  if (!foundFirstNonEmpty) {
+                    foundFirstNonEmpty = true;
+                    return <div key={idx} className="footer-address-bold" style={{ fontWeight: "bold" }}>{trimmed}</div>;
+                  }
+                  return <div key={idx} className="footer-address-line" style={{ fontWeight: "normal" }}>{trimmed}</div>;
+                }).filter((el) => el !== null);
+              })()}
+            </div>
+          )}
+          {content.site.officialEmail && content.site.officialEmail.trim().length > 0 && (
+            <a href={`mailto:${content.site.officialEmail}`}>{content.site.officialEmail}</a>
+          )}
+        </div>
+      )}
     </div>
     <div className="container footer__bottom">
       <span>© {new Date().getFullYear()} {t(content.footer.copyright, language)}</span>
