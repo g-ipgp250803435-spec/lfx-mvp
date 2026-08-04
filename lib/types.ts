@@ -232,6 +232,14 @@ export type TabungRecord = {
   description: string;
   recorded_by: string;
   recipient?: string;
+  display_on_public?: boolean | string;
+  donor_name?: string;
+  donor_email?: string;
+  reference_number?: string;
+  status?: string;
+  payment_method?: string;
+  source?: string;
+  audit_metadata?: string;
 };
 
 export type Announcement = {

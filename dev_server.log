@@ -5,13 +5,12 @@
 ▲ Next.js 16.2.12 (Turbopack)
 - Local:         http://localhost:3000
 - Network:       http://192.168.0.2:3000
-✓ Ready in 594ms
+✓ Ready in 1205ms
 
 ○ Compiling / ...
- GET / 200 in 4.3s (next.js: 3.7s, application-code: 594ms)
- GET /tabung-jumaat 200 in 634ms (next.js: 486ms, application-code: 149ms)
- GET / 200 in 110ms (next.js: 5ms, application-code: 105ms)
- GET /admin 200 in 1035ms (next.js: 836ms, application-code: 199ms)
+ HEAD / 200 in 4.6s (next.js: 4.0s, application-code: 522ms)
+ GET / 200 in 142ms (next.js: 11ms, application-code: 131ms)
+ GET /tabung-jumaat 200 in 708ms (next.js: 580ms, application-code: 128ms)
+ GET /admin 200 in 1179ms (next.js: 968ms, application-code: 211ms)
 [browser] Image with src "/lfx-mark.svg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
 Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
- GET / 200 in 117ms (next.js: 4ms, application-code: 113ms)

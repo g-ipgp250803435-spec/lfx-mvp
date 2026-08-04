@@ -70,6 +70,7 @@ export function AdminStudio() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [flash, setFlash] = useState<Flash>(null);
   const [busy, setBusy] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [rejectingLoanId, setRejectingLoanId] = useState<string | null>(null);
   const [rejectingIkesId, setRejectingIkesId] = useState<string | null>(null);
@@ -378,6 +379,24 @@ export function AdminStudio() {
     }
   }, language === "bm" ? "Rekod Tabung Jumaat berjaya dipadamkan." : "Friday Fund record successfully deleted.");
 
+  const toggleTabungVisibility = async (recordId: string, displayOnPublic: boolean) => {
+    setBusy(true);
+    try {
+      if (isDemoMode) {
+        const next = tabung.map((r) => r.record_id === recordId ? { ...r, display_on_public: displayOnPublic ? "true" : "false" } : r);
+        setTabung(next);
+        demoStore.saveTabung(next);
+      } else if (user) {
+        await apiPost("tabung/toggle-visibility", { idToken: user.idToken, record_id: recordId, display_on_public: displayOnPublic ? "true" : "false" });
+        await loadData();
+      }
+    } catch (e) {
+      setFlash({ type: "error", text: e instanceof Error ? e.message : "Failed to toggle visibility" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const saveAnnouncements = () => run(async () => {
     if (isDemoMode) demoStore.saveAnnouncements(announcements);
     else if (user) await apiPost("announcements/saveAll", { idToken: user.idToken, announcements });
@@ -385,9 +404,15 @@ export function AdminStudio() {
 
   const saveOrgItems = async (itemsToSave: OrgItem[], officersToSave: any[]) => {
     return run(async () => {
+      // Filter out completely empty placeholder rows (i.e. rows without non-empty title)
+      const validItems = itemsToSave.filter(item => item.title && item.title.trim() !== "");
+      if (validItems.length === 0) {
+        throw new Error(language === "bm" ? "Sekurang-kurangnya satu item organisasi diperlukan." : "At least one organisation item is required.");
+      }
+
       // Validate unique codes
       const codes = new Set<string>();
-      for (const item of itemsToSave) {
+      for (const item of validItems) {
         if (!item.title.trim()) {
           throw new Error("Title is required for all items.");
         }
@@ -404,7 +429,7 @@ export function AdminStudio() {
       }
 
       // Convert or normalize to keep both id/type and item_id/item_type fields
-      const itemsWithBothFields = itemsToSave.map((item) => ({
+      const itemsWithBothFields = validItems.map((item) => ({
         ...item,
         id: item.id || item.item_id || "",
         type: item.type || item.item_type || "UNIT",
@@ -441,13 +466,27 @@ export function AdminStudio() {
   ];
 
   return <div className="admin-shell">
-    <aside className="admin-sidebar"><div className="admin-brand"><Image src="/lfx-mark.svg" alt="HiPER" width={52} height={52}/><span><strong>HiPER Studio</strong><small>{session.email}</small></span></div><nav>{tabs.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => { setTab(item.id); setFlash(null); }}><Icon name={item.icon}/>{language === "bm" ? item.bm : item.en}</button>)}</nav><Link href="/" className="admin-back"><Icon name="arrow" size={17}/>{language === "bm" ? "Lihat portal" : "View portal"}</Link></aside>
-    <main className="admin-main"><header className="admin-topbar"><div><span className="eyebrow">Office Operating System</span><h1>{tabs.find((item) => item.id === tab)?.[language]}</h1></div><span className="mode-pill">{isDemoMode ? "DEMO" : "LIVE"}</span></header><FlashMessage flash={flash}/>
+    {mobileMenuOpen && <div className="admin-sidebar-backdrop" onClick={() => setMobileMenuOpen(false)} />}
+    <aside className={`admin-sidebar ${mobileMenuOpen ? "admin-sidebar--open" : ""}`}>
+      <div className="admin-sidebar-mobile-header" style={{ display: "none", justifyContent: "space-between", alignItems: "center", width: "100%", borderBottom: "1px solid var(--admin-sidebar-border)", paddingBottom: "16px", marginBottom: "8px" }}>
+        <div className="admin-brand" style={{ border: 0, paddingBottom: 0 }}><Image src="/lfx-mark.svg" alt="HiPER" width={42} height={42}/><span><strong style={{ fontSize: "1.1rem" }}>HiPER Studio</strong><small>{session.email}</small></span></div>
+        <button className="admin-sidebar-close" onClick={() => setMobileMenuOpen(false)} aria-label="Close menu" style={{ background: "transparent", border: 0, color: "var(--admin-sidebar-text)", cursor: "pointer", display: "flex", alignItems: "center" }}><Icon name="close" size={20}/></button>
+      </div>
+      <div className="admin-brand admin-sidebar-desktop-header"><Image src="/lfx-mark.svg" alt="HiPER" width={52} height={52}/><span><strong>HiPER Studio</strong><small>{session.email}</small></span></div>
+      <nav>{tabs.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => { setTab(item.id); setFlash(null); setMobileMenuOpen(false); }}><Icon name={item.icon}/>{language === "bm" ? item.bm : item.en}</button>)}</nav>
+      <Link href="/" className="admin-back"><Icon name="arrow" size={17}/>{language === "bm" ? "Lihat portal" : "View portal"}</Link>
+    </aside>
+    <main className="admin-main">
+      <div className="admin-mobile-topbar" style={{ display: "none", alignItems: "center", gap: "12px", marginBottom: "20px", borderBottom: "1px solid var(--line)", paddingBottom: "12px" }}>
+        <button className="button button--small button--outline" onClick={() => setMobileMenuOpen(true)} style={{ minHeight: "36px", padding: "6px 12px" }}><Icon name="menu" size={18}/> Menu</button>
+        <span style={{ font: "600 1.25rem var(--serif)", color: "var(--brand-2)" }}>HiPER Studio</span>
+      </div>
+      <header className="admin-topbar"><div><span className="eyebrow">Office Operating System</span><h1>{tabs.find((item) => item.id === tab)?.[language]}</h1></div><span className="mode-pill">{isDemoMode ? "DEMO" : "LIVE"}</span></header><FlashMessage flash={flash}/>
       {tab === "overview" && <Overview assets={assets} loans={loans} ikes={ikes} tabung={tabung} busy={busy}/>}
       {tab === "content" && <ContentEditor content={content} setContent={setContent} onSave={saveContent} idToken={user?.idToken || ""} busy={busy}/>}
       {tab === "assets" && <AssetAdmin assets={assets} setAssets={setAssets} loans={loans} onSave={saveAssets} onDecision={loanDecision} onScan={scanLoan} idToken={user?.idToken || ""} busy={busy}/>}
       {tab === "ikes" && <IkesAdmin applications={ikes} onStatus={ikesDecision} onRepay={ikesRepayment} onDelete={ikesDelete} busy={busy}/>}
-      {tab === "tabung" && <TabungAdmin records={tabung} onCreate={saveTabungRecord} onDelete={deleteTabungRecord} busy={busy}/>}
+      {tab === "tabung" && <TabungAdmin records={tabung} onCreate={saveTabungRecord} onDelete={deleteTabungRecord} onToggleVisibility={toggleTabungVisibility} busy={busy}/>}
       {tab === "announcements" && <AnnouncementAdmin items={announcements} setItems={setAnnouncements} onSave={saveAnnouncements} idToken={user?.idToken || ""} busy={busy}/>}
       {tab === "organisation" && (
         <OrganisationEditor
@@ -1716,7 +1755,19 @@ function IkesAdmin({
   );
 }
 
-function TabungAdmin({ records, onCreate, onDelete, busy }: { records: TabungRecord[]; onCreate: (record: Omit<TabungRecord, "record_id" | "recorded_by">) => void; onDelete: (recordId: string) => void; busy: boolean }) {
+function TabungAdmin({
+  records,
+  onCreate,
+  onDelete,
+  onToggleVisibility,
+  busy
+}: {
+  records: TabungRecord[];
+  onCreate: (record: Omit<TabungRecord, "record_id" | "recorded_by">) => void;
+  onDelete: (recordId: string) => void;
+  onToggleVisibility: (recordId: string, visible: boolean) => void;
+  busy: boolean;
+}) {
   const { language } = useApp();
   const [form, setForm] = useState<Omit<TabungRecord, "record_id" | "recorded_by">>({ type: "COLLECTION", amount: 0, date: new Date().toISOString().slice(0,10), description: "", recipient: "" });
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -1769,28 +1820,42 @@ function TabungAdmin({ records, onCreate, onDelete, busy }: { records: TabungRec
           <h2>Recent records</h2>
         </div>
         <div className="admin-list">
-          {records.slice().sort((a,b) => b.date.localeCompare(a.date)).slice(0,12).map((record) => (
-            <article key={record.record_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <strong>{record.description}</strong>
-                <span>{record.type} · {formatDate(record.date)}</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <b className={record.type === "COLLECTION" ? "positive" : "negative"}>
-                  {record.type === "COLLECTION" ? "+" : "−"}{money(record.amount)}
-                </b>
-                <button
-                  type="button"
-                  onClick={() => setDeleteConfirmId(record.record_id)}
-                  className="danger-icon"
-                  style={{ background: "transparent", border: "none", cursor: "pointer", padding: "4px" }}
-                  title={language === "bm" ? "Padam" : "Delete"}
-                >
-                  <Icon name="trash" size={17} />
-                </button>
-              </div>
-            </article>
-          ))}
+          {records.slice().sort((a,b) => b.date.localeCompare(a.date)).slice(0,12).map((record) => {
+            const isPublic = record.display_on_public === true || record.display_on_public === "true" || record.display_on_public === undefined || record.display_on_public === "";
+            return (
+              <article key={record.record_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <strong>{record.description}</strong>
+                  <span>{record.type} · {formatDate(record.date)}</span>
+                  <div style={{ marginTop: "4px" }}>
+                    <label className="check-field" style={{ margin: 0, padding: 0, fontSize: "0.75rem" }}>
+                      <input
+                        type="checkbox"
+                        checked={isPublic}
+                        onChange={(e) => onToggleVisibility(record.record_id, e.target.checked)}
+                        disabled={busy}
+                      />
+                      <span>{language === "bm" ? "Paparkan pada halaman awam" : "Display on public page"}</span>
+                    </label>
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <b className={record.type === "COLLECTION" ? "positive" : "negative"}>
+                    {record.type === "COLLECTION" ? "+" : "−"}{money(record.amount)}
+                  </b>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirmId(record.record_id)}
+                    className="danger-icon"
+                    style={{ background: "transparent", border: "none", cursor: "pointer", padding: "4px" }}
+                    title={language === "bm" ? "Padam" : "Delete"}
+                  >
+                    <Icon name="trash" size={17} />
+                  </button>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
 
@@ -1836,31 +1901,79 @@ function TabungAdmin({ records, onCreate, onDelete, busy }: { records: TabungRec
 }
 
 function AnnouncementAdmin({ items, setItems, onSave, idToken, busy }: { items: Announcement[]; setItems: (items: Announcement[]) => void; onSave: () => void; idToken: string; busy: boolean }) {
+  const { language } = useApp();
   const add = () => setItems([{ announcement_id: uid("ANN").toUpperCase(), title: { bm: "Pengumuman baharu", en: "New announcement" }, content: { bm: "Kandungan pengumuman.", en: "Announcement content." }, category: "General", attachment_url: "", publish_date: new Date().toISOString().slice(0,10), created_by: "", responsible_officer: "", image_url: "" }, ...items]);
   return <section className="admin-card"><div className="admin-card__heading"><div><h2>Announcement Centre</h2><p>Create bilingual notices, categories and PDF links.</p></div><button className="button button--small button--outline" onClick={add}><Icon name="plus" size={16}/>New announcement</button></div><div className="announcement-editor">{items.map((item,index) => <article key={item.announcement_id}><div className="page-editor-list__top"><strong>{item.announcement_id}</strong><button className="danger-icon" onClick={() => setItems(items.filter((_,i) => i !== index))}><Icon name="trash" size={17}/></button></div><LocalizedInputs label="Title" value={item.title} onChange={(title) => { const next=[...items]; next[index]={...item,title}; setItems(next); }}/><LocalizedInputs label="Content" multiline value={item.content} onChange={(content) => { const next=[...items]; next[index]={...item,content}; setItems(next); }}/><div className="form-grid"><label><span>Category</span><input value={item.category} onChange={(e) => { const next=[...items]; next[index]={...item,category:e.target.value}; setItems(next); }}/></label><label><span>Publish date</span><input type="date" value={item.publish_date} onChange={(e) => { const next=[...items]; next[index]={...item,publish_date:e.target.value}; setItems(next); }}/></label><label><span>Attachment URL</span><input value={item.attachment_url} onChange={(e) => { const next=[...items]; next[index]={...item,attachment_url:e.target.value}; setItems(next); }}/></label><label><span>Responsible officer</span><input value={item.responsible_officer || ""} onChange={(e) => { const next=[...items]; next[index]={...item,responsible_officer:e.target.value}; setItems(next); }}/></label></div>
-    <div style={{ marginTop: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-      <MediaUploader
-        purpose="announcement_pdf"
-        idToken={idToken}
-        currentUrl={item.attachment_url}
-        onUploadSuccess={(url) => { const next = [...items]; next[index] = { ...item, attachment_url: url }; setItems(next); }}
-        onRemove={() => { const next = [...items]; next[index] = { ...item, attachment_url: "" }; setItems(next); }}
-        label="Announcement Attachment"
-      />
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <MediaUploader
-          purpose="announcement_image"
-          idToken={idToken}
-          currentUrl={item.image_url || ""}
-          onUploadSuccess={(url) => { const next = [...items]; next[index] = { ...item, image_url: url }; setItems(next); }}
-          onRemove={() => { const next = [...items]; next[index] = { ...item, image_url: "" }; setItems(next); }}
-          label="Poster Pengumuman"
-        />
-        <small style={{ color: "var(--muted)", marginTop: "4px" }}>
-          Muat naik poster dalam format PNG, JPG atau JPEG. Saiz maksimum ialah 10 MB.
-        </small>
-      </div>
-    </div>
+    {(() => {
+      const currentType = item.image_url ? "POSTER" : (item.attachment_url ? "DOCUMENT" : "POSTER");
+      return (
+        <div style={{ marginTop: "16px", border: "1px solid var(--line)", borderRadius: "8px", padding: "16px", background: "var(--soft)" }}>
+          <strong style={{ display: "block", fontSize: "0.85rem", color: "var(--brand-2)", marginBottom: "12px", textTransform: "uppercase" }}>
+            {language === "bm" ? "Media Pengumuman" : "Announcement Media"}
+          </strong>
+          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center", marginBottom: "16px" }}>
+            <label style={{ display: "flex", flexDirection: "row", gap: "8px", alignItems: "center", cursor: "pointer", fontSize: "0.85rem" }}>
+              <input
+                type="radio"
+                name={`media-type-${item.announcement_id}`}
+                checked={currentType === "POSTER"}
+                onChange={() => {
+                  const next = [...items];
+                  next[index] = { ...item };
+                  setItems(next);
+                }}
+              />
+              <span>{language === "bm" ? "Poster Pengumuman (Gambar PNG, JPG)" : "Announcement Poster (Image)"}</span>
+            </label>
+            <label style={{ display: "flex", flexDirection: "row", gap: "8px", alignItems: "center", cursor: "pointer", fontSize: "0.85rem" }}>
+              <input
+                type="radio"
+                name={`media-type-${item.announcement_id}`}
+                checked={currentType === "DOCUMENT"}
+                onChange={() => {
+                  const next = [...items];
+                  next[index] = { ...item };
+                  setItems(next);
+                }}
+              />
+              <span>{language === "bm" ? "Dokumen Lampiran (PDF)" : "Document Attachment (PDF)"}</span>
+            </label>
+          </div>
+
+          <div>
+            {currentType === "POSTER" ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <MediaUploader
+                  purpose="announcement_image"
+                  idToken={idToken}
+                  currentUrl={item.image_url || ""}
+                  onUploadSuccess={(url) => { const next = [...items]; next[index] = { ...item, image_url: url }; setItems(next); }}
+                  onRemove={() => { const next = [...items]; next[index] = { ...item, image_url: "" }; setItems(next); }}
+                  label={language === "bm" ? "Muat naik Poster Pengumuman" : "Upload Announcement Poster"}
+                />
+                <small style={{ color: "var(--muted)", fontSize: "0.75rem" }}>
+                  {language === "bm" ? "Poster dalam format PNG, JPG atau JPEG. Maksimum 10 MB." : "Poster in PNG, JPG or JPEG format. Max 10 MB."}
+                </small>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <MediaUploader
+                  purpose="announcement_pdf"
+                  idToken={idToken}
+                  currentUrl={item.attachment_url || ""}
+                  onUploadSuccess={(url) => { const next = [...items]; next[index] = { ...item, attachment_url: url }; setItems(next); }}
+                  onRemove={() => { const next = [...items]; next[index] = { ...item, attachment_url: "" }; setItems(next); }}
+                  label={language === "bm" ? "Muat naik Dokumen Lampiran" : "Upload Document Attachment"}
+                />
+                <small style={{ color: "var(--muted)", fontSize: "0.75rem" }}>
+                  {language === "bm" ? "Dokumen lampiran dalam format PDF. Maksimum 2.5 MB." : "Document attachment in PDF format. Max 2.5 MB."}
+                </small>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    })()}
   </article>)}</div><div className="admin-card__footer"><button disabled={busy} className="button" onClick={onSave}><Icon name="save" size={17}/>Save announcements</button></div></section>;
 }
 
@@ -1884,7 +1997,7 @@ function OrganisationEditor({
 
   // --- UNIT OPERATIONS ---
   const addUnit = () => {
-    const nextSortOrder = items.length > 0 ? Math.max(...items.map(i => i.sort_order)) + 1 : 1;
+    const nextSortOrder = items.length > 0 ? Math.max(...items.map(i => i.sort_order || 0)) + 1 : 1;
     setItems([
       ...items,
       {
@@ -1899,35 +2012,40 @@ function OrganisationEditor({
     ]);
   };
 
-  const updateUnit = (index: number, patch: Partial<OrgItem>) => {
-    const next = [...items];
-    next[index] = { ...next[index], ...patch };
+  const updateUnit = (id: string, patch: Partial<OrgItem>) => {
+    const next = items.map((item) => item.id === id ? { ...item, ...patch } : item);
     setItems(next);
   };
 
-  const removeUnit = (index: number) => {
-    const item = items[index];
+  const removeUnit = (id: string) => {
+    const item = items.find((i) => i.id === id);
+    if (!item) return;
     const confirm = window.confirm(`Are you sure you want to remove "${item.title || "this item"}"?`);
     if (confirm) {
-      setItems(items.filter((_, i) => i !== index));
+      setItems(items.filter((i) => i.id !== id));
     }
   };
 
-  const moveUnit = (index: number, direction: "up" | "down") => {
+  const moveUnit = (id: string, direction: "up" | "down") => {
+    const sorted = [...items].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    const index = sorted.findIndex((i) => i.id === id);
+    if (index === -1) return;
     if (direction === "up" && index === 0) return;
-    if (direction === "down" && index === items.length - 1) return;
+    if (direction === "down" && index === sorted.length - 1) return;
 
-    const next = [...items];
     const swapWith = direction === "up" ? index - 1 : index + 1;
+    const currentItem = sorted[index];
+    const targetItem = sorted[swapWith];
 
-    const tempOrder = next[index].sort_order;
-    next[index].sort_order = next[swapWith].sort_order;
-    next[swapWith].sort_order = tempOrder;
+    const tempOrder = currentItem.sort_order;
+    currentItem.sort_order = targetItem.sort_order;
+    targetItem.sort_order = tempOrder;
 
-    const temp = next[index];
-    next[index] = next[swapWith];
-    next[swapWith] = temp;
-
+    const next = items.map((item) => {
+      if (item.id === currentItem.id) return currentItem;
+      if (item.id === targetItem.id) return targetItem;
+      return item;
+    });
     setItems(next);
   };
 
@@ -1950,17 +2068,17 @@ function OrganisationEditor({
     ]);
   };
 
-  const updateOfficer = (index: number, patch: Partial<any>) => {
-    const next = [...officers];
-    next[index] = { ...next[index], ...patch };
+  const updateOfficer = (id: string, patch: Partial<any>) => {
+    const next = officers.map((officer) => officer.id === id ? { ...officer, ...patch } : officer);
     setOfficers(next);
   };
 
-  const removeOfficer = (index: number) => {
-    const officer = officers[index];
+  const removeOfficer = (id: string) => {
+    const officer = officers.find((o) => o.id === id);
+    if (!officer) return;
     const confirm = window.confirm(`Are you sure you want to remove officer "${officer.name || "this officer"}"?`);
     if (confirm) {
-      setOfficers(officers.filter((_, i) => i !== index));
+      setOfficers(officers.filter((o) => o.id !== id));
     }
   };
 
@@ -2206,9 +2324,9 @@ function OrganisationEditor({
 
       {activeSubTab === "units" && (
         <div className="organisation-editor" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          {items
-            .sort((a, b) => a.sort_order - b.sort_order)
-            .map((item, index) => (
+          {[...items]
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+            .map((item, index, arr) => (
               <article
                 key={item.id}
                 style={{
@@ -2227,15 +2345,15 @@ function OrganisationEditor({
                   <div style={{ display: "flex", gap: "8px" }}>
                     <button
                       disabled={index === 0}
-                      onClick={() => moveUnit(index, "up")}
+                      onClick={() => moveUnit(item.id, "up")}
                       className="button button--small button--outline"
                       style={{ padding: "4px 8px" }}
                     >
                       ▲
                     </button>
                     <button
-                      disabled={index === items.length - 1}
-                      onClick={() => moveUnit(index, "down")}
+                      disabled={index === arr.length - 1}
+                      onClick={() => moveUnit(item.id, "down")}
                       className="button button--small button--outline"
                       style={{ padding: "4px 8px" }}
                     >
@@ -2248,13 +2366,13 @@ function OrganisationEditor({
                       <input
                         type="checkbox"
                         checked={item.is_active}
-                        onChange={(e) => updateUnit(index, { is_active: e.target.checked })}
+                        onChange={(e) => updateUnit(item.id, { is_active: e.target.checked })}
                       />
                       <span>Active</span>
                     </label>
                     <button
                       className="danger-icon"
-                      onClick={() => removeUnit(index)}
+                      onClick={() => removeUnit(item.id)}
                       style={{
                         background: "none",
                         border: "none",
@@ -2273,7 +2391,7 @@ function OrganisationEditor({
                     <span>Type</span>
                     <select
                       value={item.type}
-                      onChange={(e) => updateUnit(index, { type: e.target.value as "LEADERSHIP" | "UNIT" })}
+                      onChange={(e) => updateUnit(item.id, { type: e.target.value as "LEADERSHIP" | "UNIT" })}
                     >
                       <option value="LEADERSHIP">LEADERSHIP</option>
                       <option value="UNIT">UNIT</option>
@@ -2286,7 +2404,7 @@ function OrganisationEditor({
                       type="text"
                       placeholder="e.g. BAK, U-DOPE"
                       value={item.code}
-                      onChange={(e) => updateUnit(index, { code: e.target.value })}
+                      onChange={(e) => updateUnit(item.id, { code: e.target.value })}
                     />
                   </label>
 
@@ -2297,7 +2415,7 @@ function OrganisationEditor({
                       required
                       placeholder="e.g. Bendahari Agung Kehormat"
                       value={item.title}
-                      onChange={(e) => updateUnit(index, { title: e.target.value })}
+                      onChange={(e) => updateUnit(item.id, { title: e.target.value })}
                     />
                   </label>
 
@@ -2308,7 +2426,7 @@ function OrganisationEditor({
                       min="1"
                       required
                       value={item.member_count}
-                      onChange={(e) => updateUnit(index, { member_count: parseInt(e.target.value, 10) || 1 })}
+                      onChange={(e) => updateUnit(item.id, { member_count: parseInt(e.target.value, 10) || 1 })}
                     />
                   </label>
 
@@ -2317,7 +2435,7 @@ function OrganisationEditor({
                     <input
                       type="number"
                       value={item.sort_order}
-                      onChange={(e) => updateUnit(index, { sort_order: parseInt(e.target.value, 10) || 1 })}
+                      onChange={(e) => updateUnit(item.id, { sort_order: parseInt(e.target.value, 10) || 1 })}
                     />
                   </label>
                 </div>
@@ -2328,7 +2446,7 @@ function OrganisationEditor({
 
       {activeSubTab === "officers" && (
         <div className="organisation-editor" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          {officers
+          {[...officers]
             .sort((a, b) => (a.sortOrder || 1) - (b.sortOrder || 1))
             .map((officer, index) => (
               <article
@@ -2354,13 +2472,13 @@ function OrganisationEditor({
                       <input
                         type="checkbox"
                         checked={officer.isActive}
-                        onChange={(e) => updateOfficer(index, { isActive: e.target.checked })}
+                        onChange={(e) => updateOfficer(officer.id, { isActive: e.target.checked })}
                       />
                       <span>Active</span>
                     </label>
                     <button
                       className="danger-icon"
-                      onClick={() => removeOfficer(index)}
+                      onClick={() => removeOfficer(officer.id)}
                       style={{
                         background: "none",
                         border: "none",
@@ -2381,7 +2499,7 @@ function OrganisationEditor({
                       type="text"
                       required
                       value={officer.name}
-                      onChange={(e) => updateOfficer(index, { name: e.target.value })}
+                      onChange={(e) => updateOfficer(officer.id, { name: e.target.value })}
                     />
                   </label>
 
@@ -2391,7 +2509,7 @@ function OrganisationEditor({
                       value={officer.unitId}
                       onChange={(e) => {
                         const selectedUnit = items.find(u => u.id === e.target.value);
-                        updateOfficer(index, {
+                        updateOfficer(officer.id, {
                           unitId: e.target.value,
                           position: selectedUnit ? selectedUnit.title : officer.position
                         });
@@ -2411,7 +2529,7 @@ function OrganisationEditor({
                     <input
                       type="text"
                       value={officer.position}
-                      onChange={(e) => updateOfficer(index, { position: e.target.value })}
+                      onChange={(e) => updateOfficer(officer.id, { position: e.target.value })}
                     />
                   </label>
 
@@ -2420,7 +2538,7 @@ function OrganisationEditor({
                     <input
                       type="email"
                       value={officer.email || ""}
-                      onChange={(e) => updateOfficer(index, { email: e.target.value })}
+                      onChange={(e) => updateOfficer(officer.id, { email: e.target.value })}
                     />
                   </label>
 
@@ -2430,7 +2548,7 @@ function OrganisationEditor({
                       type="text"
                       placeholder="Upload photo or paste URL"
                       value={officer.photoUrl || ""}
-                      onChange={(e) => updateOfficer(index, { photoUrl: e.target.value })}
+                      onChange={(e) => updateOfficer(officer.id, { photoUrl: e.target.value })}
                     />
                   </label>
 
@@ -2439,8 +2557,8 @@ function OrganisationEditor({
                       purpose="officer_photo"
                       idToken={sessionStorage.getItem("lfx-user") ? JSON.parse(sessionStorage.getItem("lfx-user")!).idToken : ""}
                       currentUrl={officer.photoUrl || ""}
-                      onUploadSuccess={(url) => updateOfficer(index, { photoUrl: url })}
-                      onRemove={() => updateOfficer(index, { photoUrl: "" })}
+                      onUploadSuccess={(url) => updateOfficer(officer.id, { photoUrl: url })}
+                      onRemove={() => updateOfficer(officer.id, { photoUrl: "" })}
                       label={language === "bm" ? "Muat naik Gambar Pegawai" : "Upload Officer Photograph"}
                     />
                   </div>
@@ -2450,7 +2568,7 @@ function OrganisationEditor({
                     <textarea
                       rows={3}
                       value={officer.responsibilities || ""}
-                      onChange={(e) => updateOfficer(index, { responsibilities: e.target.value })}
+                      onChange={(e) => updateOfficer(officer.id, { responsibilities: e.target.value })}
                     />
                   </label>
 
@@ -2459,7 +2577,7 @@ function OrganisationEditor({
                     <input
                       type="number"
                       value={officer.sortOrder || 1}
-                      onChange={(e) => updateOfficer(index, { sortOrder: parseInt(e.target.value, 10) || 1 })}
+                      onChange={(e) => updateOfficer(officer.id, { sortOrder: parseInt(e.target.value, 10) || 1 })}
                     />
                   </label>
                 </div>
