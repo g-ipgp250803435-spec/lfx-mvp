@@ -5,8 +5,10 @@
 ▲ Next.js 16.2.12 (Turbopack)
 - Local:         http://localhost:3000
 - Network:       http://192.168.0.2:3000
-✓ Ready in 515ms
+✓ Ready in 543ms
 
 ○ Compiling /tabung-jumaat ...
- GET /tabung-jumaat 200 in 4.6s (next.js: 4.0s, application-code: 634ms)
- GET /tabung-jumaat 200 in 100ms (next.js: 6ms, application-code: 94ms)
+ GET /tabung-jumaat 200 in 4.4s (next.js: 3.9s, application-code: 518ms)
+ GET / 200 in 739ms (next.js: 562ms, application-code: 177ms)
+ GET /announcements 200 in 584ms (next.js: 496ms, application-code: 89ms)
+ GET /organisation 200 in 885ms (next.js: 681ms, application-code: 205ms)

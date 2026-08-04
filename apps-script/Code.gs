@@ -51,23 +51,34 @@ function doPost(e) {
     switch (action) {
       case "session/me": return json_({ ok: true, data: sessionMe_(body) });
       case "assets/list": return json_({ ok: true, data: adminListAssets_(body) });
-      case "loans/all": return json_({ ok: true, data: adminListLoans_(body) });
-      case "ikes/all": return json_({ ok: true, data: adminListIkes_(body) });
-      case "ikes/mine": return json_({ ok: true, data: userListIkes_(body) });
+      case "loans/all":
+      case "loan/all": return json_({ ok: true, data: adminListLoans_(body) });
+      case "ikes/all":
+      case "ike/all": return json_({ ok: true, data: adminListIkes_(body) });
+      case "ikes/mine":
+      case "ike/mine": return json_({ ok: true, data: userListIkes_(body) });
       case "loans/mine":
       case "loan/mine": return json_({ ok: true, data: userListLoans_(body) });
-      case "ikes/repayment": return json_({ ok: true, data: withLock_(() => ikesRepayment_(body)) });
-      case "loan/request": return json_({ ok: true, data: withLock_(() => requestLoan_(body)) });
-      case "loan/approve": return json_({ ok: true, data: withLock_(() => decideLoan_(body)) });
-      case "loan/scan": return json_({ ok: true, data: withLock_(() => scanLoan_(body)) });
-      case "ikes/apply": return json_({ ok: true, data: withLock_(() => applyIkes_(body)) });
-      case "ikes/approve": return json_({ ok: true, data: withLock_(() => decideIkes_(body)) });
-      case "ikes/status": return json_({ ok: true, data: withLock_(() => updateIkesStatus_(body)) });
+      case "ikes/repayment":
+      case "ike/repayment": return json_({ ok: true, data: withLock_(() => ikesRepayment_(body)) });
+      case "loan/request":
+      case "loans/request": return json_({ ok: true, data: withLock_(() => requestLoan_(body)) });
+      case "loan/approve":
+      case "loans/approve": return json_({ ok: true, data: withLock_(() => decideLoan_(body)) });
+      case "loan/scan":
+      case "loans/scan": return json_({ ok: true, data: withLock_(() => scanLoan_(body)) });
+      case "ikes/apply":
+      case "ike/apply": return json_({ ok: true, data: withLock_(() => applyIkes_(body)) });
+      case "ikes/approve":
+      case "ike/approve": return json_({ ok: true, data: withLock_(() => decideIkes_(body)) });
+      case "ikes/status":
+      case "ike/status": return json_({ ok: true, data: withLock_(() => updateIkesStatus_(body)) });
       case "tabung/record": return json_({ ok: true, data: withLock_(() => recordTabung_(body)) });
       case "tabung/public-record": return json_({ ok: true, data: withLock_(() => publicRecordTabung_(body)) });
       case "tabung/toggle-visibility": return json_({ ok: true, data: withLock_(() => toggleTabungVisibility_(body)) });
       case "tabung/delete": return json_({ ok: true, data: withLock_(() => deleteTabung_(body)) });
-      case "ikes/delete": return json_({ ok: true, data: withLock_(() => deleteIkes_(body)) });
+      case "ikes/delete":
+      case "ike/delete": return json_({ ok: true, data: withLock_(() => deleteIkes_(body)) });
       case "announcements/saveAll": return json_({ ok: true, data: withLock_(() => saveAnnouncements_(body)) });
       case "organisation/saveAll": return json_({ ok: true, data: withLock_(() => saveOrganisationItems_(body)) });
       case "content/save": return json_({ ok: true, data: withLock_(() => saveSiteContent_(body)) });
