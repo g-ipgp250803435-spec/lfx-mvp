@@ -93,9 +93,6 @@ export function Header() {
 
           <div className="nav-mobile-section mobile-only" style={{ width: "100%" }}>
             <div className="nav-mobile-language-switch" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", minHeight: "44px" }}>
-              <span className="language-label" style={{ fontSize: "0.86rem", fontWeight: 750, color: "var(--muted)" }}>
-                {language === "bm" ? "Bahasa" : "Language"}
-              </span>
               <div className="language-switch" role="group" aria-label="Language" style={{ display: "flex" }}>
                 <button
                   className={language === "bm" ? "active" : ""}
