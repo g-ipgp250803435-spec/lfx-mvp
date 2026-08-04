@@ -41,6 +41,25 @@ export function AdminStudio() {
   const { content: publicContent, refresh } = useContent();
   const [user, setUser] = useState<SignedInUser | null>(null);
   const [session, setSession] = useState<SessionInfo | null>(null);
+
+  // Force dark theme on mount for the login screen, restore preference on unmount or authentication
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("lfx-theme") as "light" | "dark" | null;
+    const preferredDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const userThemePreference = savedTheme || (preferredDark ? "dark" : "light");
+
+    if (!user || !session) {
+      document.documentElement.dataset.theme = "dark";
+    } else {
+      document.documentElement.dataset.theme = userThemePreference;
+    }
+
+    return () => {
+      // Restore standard preference upon unmount/leaving admin route
+      document.documentElement.dataset.theme = userThemePreference;
+    };
+  }, [user, session]);
+
   const [checking, setChecking] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
   const [content, setContent] = useState<SiteContent>(clone(publicContent));
@@ -138,6 +157,13 @@ export function AdminStudio() {
   };
 
   const saveContent = () => run(async () => {
+    const email = content.site.officialEmail || "";
+    if (email.trim() !== "") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error(language === "bm" ? "Masukkan alamat e-mel yang sah." : "Please enter a valid email address.");
+      }
+    }
     if (isDemoMode) demoStore.saveContent(content);
     else if (user) await apiPost("content/save", { idToken: user.idToken, content });
     await refresh();
@@ -627,7 +653,30 @@ function ContentEditor({ content, setContent, onSave, busy, idToken }: { content
     <section className="admin-card"><div className="admin-card__heading"><div><h2>Navigation</h2><p>Names, links, visibility and ordering.</p></div><button className="button button--small button--outline" onClick={addMenu}><Icon name="plus" size={16}/>Add menu</button></div><div className="repeat-list">{content.navigation.map((item, index) => <article key={item.id}><div className="repeat-list__fields"><input aria-label="BM label" value={item.label.bm} onChange={(e) => updateMenu(index, { label: { ...item.label, bm: e.target.value } })}/><input aria-label="EN label" value={item.label.en} onChange={(e) => updateMenu(index, { label: { ...item.label, en: e.target.value } })}/><input aria-label="Link" value={item.href} onChange={(e) => updateMenu(index, { href: e.target.value })}/><label className="check-field"><input type="checkbox" checked={item.enabled} onChange={(e) => updateMenu(index, { enabled: e.target.checked })}/>Visible</label></div><button className="danger-icon" onClick={() => deleteMenu(index)}><Icon name="trash" size={17}/></button></article>)}</div></section>
     <section className="admin-card"><div className="admin-card__heading"><div><h2>Notice bar</h2><p>Control the announcement strip above the main header.</p></div><label className="check-field"><input type="checkbox" checked={content.notice.enabled} onChange={(e) => setContent({ ...content, notice: { ...content.notice, enabled: e.target.checked } })}/>Enabled</label></div><LocalizedInputs label="Label" value={content.notice.label} onChange={(label) => setContent({ ...content, notice: { ...content.notice, label } })}/><LocalizedInputs label="Notice text" value={content.notice.text} onChange={(text) => setContent({ ...content, notice: { ...content.notice, text } })}/><label><span>Notice link</span><input value={content.notice.href} onChange={(e) => setContent({ ...content, notice: { ...content.notice, href: e.target.value } })}/></label></section>
     <section className="admin-card"><div className="admin-card__heading"><div><h2>Homepage modules</h2><p>Edit the four primary feature cards.</p></div></div><div className="page-editor-list">{content.features.map((feature,index) => <article key={feature.id}><div className="form-grid"><label><span>Icon name</span><input value={feature.icon} onChange={(e) => { const features=[...content.features]; features[index]={...feature,icon:e.target.value}; setContent({...content,features}); }}/></label><label><span>Link</span><input value={feature.href} onChange={(e) => { const features=[...content.features]; features[index]={...feature,href:e.target.value}; setContent({...content,features}); }}/></label></div><LocalizedInputs label="Title" value={feature.title} onChange={(title) => { const features=[...content.features]; features[index]={...feature,title}; setContent({...content,features}); }}/><LocalizedInputs label="Description" multiline value={feature.description} onChange={(description) => { const features=[...content.features]; features[index]={...feature,description}; setContent({...content,features}); }}/></article>)}</div></section>
-    <section className="admin-card"><div className="admin-card__heading"><div><h2>Footer</h2><p>Edit footer text, address and links.</p></div><button className="button button--small button--outline" onClick={addFooterLink}><Icon name="plus" size={16}/>Add footer link</button></div><LocalizedInputs label="About" multiline value={content.footer.about} onChange={(about) => setContent({ ...content, footer: { ...content.footer, about } })}/><label><span>Office address</span><input value={content.footer.address} onChange={(e) => setContent({ ...content, footer: { ...content.footer, address: e.target.value } })}/></label><LocalizedInputs label="Copyright" value={content.footer.copyright} onChange={(copyright) => setContent({ ...content, footer: { ...content.footer, copyright } })}/><div className="repeat-list">{content.footer.links.map((item,index) => <article key={item.id}><div className="repeat-list__fields"><input value={item.label.bm} aria-label="Footer BM" onChange={(e) => updateFooterLink(index,{label:{...item.label,bm:e.target.value}})}/><input value={item.label.en} aria-label="Footer EN" onChange={(e) => updateFooterLink(index,{label:{...item.label,en:e.target.value}})}/><input value={item.href} aria-label="Footer link" onChange={(e) => updateFooterLink(index,{href:e.target.value})}/><label className="check-field"><input type="checkbox" checked={item.enabled} onChange={(e) => updateFooterLink(index,{enabled:e.target.checked})}/>Visible</label></div><button className="danger-icon" onClick={() => setContent({...content,footer:{...content.footer,links:content.footer.links.filter((_,i)=>i!==index)}})}><Icon name="trash" size={17}/></button></article>)}</div></section>
+    <section className="admin-card"><div className="admin-card__heading"><div><h2>Footer</h2><p>Edit footer text, address and links.</p></div><button className="button button--small button--outline" onClick={addFooterLink}><Icon name="plus" size={16}/>Add footer link</button></div><LocalizedInputs label="About" multiline value={content.footer.about} onChange={(about) => setContent({ ...content, footer: { ...content.footer, about } })}/><label><span>Office address</span><textarea rows={5} value={content.footer.address} onChange={(e) => setContent({ ...content, footer: { ...content.footer, address: e.target.value } })}/></label>{content.footer.address && content.footer.address.trim().length > 0 && (
+      <div style={{ marginTop: "8px", padding: "12px", background: "var(--surface-muted)", border: "1px solid var(--border)", borderRadius: "8px", marginBottom: "15px" }}>
+        <small style={{ display: "block", marginBottom: "6px", textTransform: "uppercase", fontSize: "0.68rem", color: "var(--brand-2)", fontWeight: "bold" }}>Address Preview</small>
+        <div style={{ fontSize: "0.84rem", lineHeight: "1.4", color: "var(--text-primary)" }}>
+          {(() => {
+            const address = content.footer.address || "";
+            const lines = address.split("\n");
+            let foundFirstNonEmpty = false;
+            return lines.map((line, idx) => {
+              const trimmed = line.trim();
+              if (!trimmed) {
+                if (!foundFirstNonEmpty) return null;
+                return <br key={idx} />;
+              }
+              if (!foundFirstNonEmpty) {
+                foundFirstNonEmpty = true;
+                return <div key={idx} style={{ fontWeight: "bold" }}>{trimmed}</div>;
+              }
+              return <div key={idx}>{trimmed}</div>;
+            }).filter(el => el !== null);
+          })()}
+        </div>
+      </div>
+    )}<label><span>Alamat E-mel Pejabat</span><input type="text" value={content.site.officialEmail || ""} placeholder="email@example.com" onChange={(e) => setContent({ ...content, site: { ...content.site, officialEmail: e.target.value } })}/></label><LocalizedInputs label="Copyright" value={content.footer.copyright} onChange={(copyright) => setContent({ ...content, footer: { ...content.footer, copyright } })}/><div className="repeat-list">{content.footer.links.map((item,index) => <article key={item.id}><div className="repeat-list__fields"><input value={item.label.bm} aria-label="Footer BM" onChange={(e) => updateFooterLink(index,{label:{...item.label,bm:e.target.value}})}/><input value={item.label.en} aria-label="Footer EN" onChange={(e) => updateFooterLink(index,{label:{...item.label,en:e.target.value}})}/><input value={item.href} aria-label="Footer link" onChange={(e) => updateFooterLink(index,{href:e.target.value})}/><label className="check-field"><input type="checkbox" checked={item.enabled} onChange={(e) => updateFooterLink(index,{enabled:e.target.checked})}/>Visible</label></div><button className="danger-icon" onClick={() => setContent({...content,footer:{...content.footer,links:content.footer.links.filter((_,i)=>i!==index)}})}><Icon name="trash" size={17}/></button></article>)}</div></section>
     <section className="admin-card"><div className="admin-card__heading"><div><h2>Friday Fund donation</h2><p>Public donation method and weekly target.</p></div></div><LocalizedInputs label="Heading" value={content.donation.heading} onChange={(heading) => setContent({ ...content, donation: { ...content.donation, heading } })}/><LocalizedInputs label="Description" multiline value={content.donation.description} onChange={(description) => setContent({ ...content, donation: { ...content.donation, description } })}/><div className="form-grid"><label><span>Weekly target (RM)</span><input type="number" value={content.donation.target} onChange={(e) => setContent({ ...content, donation: { ...content.donation, target: Number(e.target.value) } })}/></label><label><span>Payment link</span><input value={content.donation.paymentUrl} onChange={(e) => setContent({ ...content, donation: { ...content.donation, paymentUrl: e.target.value } })}/></label><label><span>Bank</span><input value={content.donation.bankName} onChange={(e) => setContent({ ...content, donation: { ...content.donation, bankName: e.target.value } })}/></label><label><span>Account name</span><input value={content.donation.accountName} onChange={(e) => setContent({ ...content, donation: { ...content.donation, accountName: e.target.value } })}/></label><label><span>Account number</span><input value={content.donation.accountNumber} onChange={(e) => setContent({ ...content, donation: { ...content.donation, accountNumber: e.target.value } })}/></label><label><span>QR image URL</span><input value={content.donation.qrImageUrl} onChange={(e) => setContent({ ...content, donation: { ...content.donation, qrImageUrl: e.target.value } })}/></label></div></section>
     <section className="admin-card">
       <div className="admin-card__heading">

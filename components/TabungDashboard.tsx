@@ -23,6 +23,17 @@ export function TabungDashboard({ compact = false }: { compact?: boolean }) {
   const [confirmedAmount, setConfirmedAmount] = useState<number | null>(null);
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(content.donation.accountNumber);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleAmountSelect = (amount: number | "custom") => {
     setSelectedAmount(amount);
@@ -239,14 +250,6 @@ export function TabungDashboard({ compact = false }: { compact?: boolean }) {
                 {isSubmitting ? "..." : (language === "bm" ? "Sahkan" : "Confirm")}
               </button>
             </div>
-
-            <div style={{ borderTop: "1px solid var(--line)", paddingTop: "15px" }}>
-              <div className="bank-details" style={{ marginTop: 0 }}>
-                <span>{content.donation.bankName}</span>
-                <strong>{content.donation.accountName}</strong>
-                <code>{content.donation.accountNumber}</code>
-              </div>
-            </div>
           </div>
         ) : (
           <form onSubmit={handleDonateSubmit} style={{ display: "flex", flexDirection: "column", gap: "15px", width: "100%" }}>
@@ -349,17 +352,43 @@ export function TabungDashboard({ compact = false }: { compact?: boolean }) {
               {language === "bm" ? "Sumbang sekarang" : "Donate now"}
             </button>
 
-            <div className="bank-details" style={{ marginTop: "10px" }}>
-              <span>{content.donation.bankName}</span>
-              <strong>{content.donation.accountName}</strong>
-              <code>{content.donation.accountNumber}</code>
-            </div>
             <small style={{ marginTop: "5px", display: "block", color: "var(--warning)" }}>{t(content.donation.note, language)}</small>
           </form>
         )}
-        <div className="donation-qr">
-          <CmsImage src={content.donation.qrImageUrl || "/duitnow-placeholder.svg"} alt="Donation QR" width={230} height={230}/>
-          <span>DuitNow QR</span>
+        <div className="donation-qr-container" style={{ display: "flex", flexDirection: "column", gap: "15px", alignItems: "center", width: "100%" }}>
+          <div className="donation-qr">
+            <CmsImage
+              src={content.donation.qrImageUrl || "/duitnow-placeholder.svg"}
+              alt="Kod QR sumbangan Tabung Jumaat"
+              width={230}
+              height={230}
+            />
+            <span>DuitNow QR</span>
+          </div>
+
+          <div className="bank-details" style={{ marginTop: "0px", width: "100%", maxWidth: "280px" }}>
+            <span>{content.donation.bankName}</span>
+            <strong>{content.donation.accountName}</strong>
+            <code style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
+              <span>{content.donation.accountNumber}</span>
+              <button
+                type="button"
+                onClick={handleCopy}
+                title="Salin nombor akaun"
+                style={{
+                  background: "transparent",
+                  border: 0,
+                  cursor: "pointer",
+                  color: "var(--brand-2)",
+                  padding: "4px",
+                  display: "inline-flex",
+                  alignItems: "center"
+                }}
+              >
+                <Icon name={copied ? "check" : "copy"} size={16} />
+              </button>
+            </code>
+          </div>
         </div>
       </section>
       <section className="records-card"><div className="section-title"><div><span className="eyebrow">{labels.distributions}</span><h2>{labels.recentDistributions}</h2></div></div><div className="record-list">{summary.distributions.length ? summary.distributions.slice(0, 8).map((record) => <article key={record.record_id}><div><strong>{record.description}</strong><span>{formatDate(record.date, language === "bm" ? "ms-MY" : "en-GB")}{record.recipient ? ` · ${record.recipient}` : ""}</span></div><b>− {money(record.amount)}</b></article>) : <p className="muted">{labels.noResults}</p>}</div></section>

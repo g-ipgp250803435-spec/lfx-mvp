@@ -549,6 +549,18 @@ function getSiteContent_() {
 function saveSiteContent_(body) {
   const admin = requireAdmin_(body.idToken);
   if (!body.content || typeof body.content !== "object") throw new Error("content object is required.");
+
+  // Validate email address
+  if (body.content.site && body.content.site.officialEmail) {
+    var officialEmail = body.content.site.officialEmail;
+    if (officialEmail.trim() !== "") {
+      var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(officialEmail)) {
+        throw new Error("Masukkan alamat e-mel yang sah.");
+      }
+    }
+  }
+
   const value = { content_key: "SITE_CONTENT", json_content: JSON.stringify(body.content), updated_at: new Date().toISOString(), updated_by: admin.email };
   upsertBy_("tbl_content", "content_key", "SITE_CONTENT", value);
   audit_(admin.email, "SITE_CONTENT_SAVED", { bytes: value.json_content.length });
