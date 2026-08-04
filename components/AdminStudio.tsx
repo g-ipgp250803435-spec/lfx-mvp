@@ -2039,13 +2039,16 @@ function OrganisationEditor({
     const currentItem = sorted[index];
     const targetItem = sorted[swapWith];
 
-    const tempOrder = currentItem.sort_order;
-    currentItem.sort_order = targetItem.sort_order;
-    targetItem.sort_order = tempOrder;
+    const currentOrder = currentItem.sort_order;
+    const targetOrder = targetItem.sort_order;
 
     const next = items.map((item) => {
-      if (item.id === currentItem.id) return currentItem;
-      if (item.id === targetItem.id) return targetItem;
+      if (item.id === currentItem.id) {
+        return { ...item, sort_order: targetOrder };
+      }
+      if (item.id === targetItem.id) {
+        return { ...item, sort_order: currentOrder };
+      }
       return item;
     });
     setItems(next);

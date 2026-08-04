@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { CmsImage } from "@/components/CmsImage";
 import { Icon } from "@/components/Icon";
 import { useApp } from "@/components/Providers";
@@ -13,6 +13,8 @@ import type { TabungRecord } from "@/lib/types";
 
 export function TabungDashboard({ compact = false }: { compact?: boolean }) {
   const [records, setRecords] = useState<TabungRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { language, labels } = useApp();
   const { content } = useContent();
 
@@ -177,13 +179,36 @@ export function TabungDashboard({ compact = false }: { compact?: boolean }) {
     setShowSuccess(false);
   };
 
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (isDemoMode) {
+        setRecords(demoStore.getTabung());
+      } else {
+        const res = await apiGet<TabungRecord[]>("tabung/list");
+        setRecords(res.data || []);
+      }
+    } catch (err) {
+      console.error("[Diagnostics Error] failed to load tabung/list:", err);
+      if (!isDemoMode) {
+        setError(
+          language === "bm"
+            ? "Maklumat Tabung Jumaat tidak dapat diperoleh. Sila cuba lagi."
+            : "Information for Friday Fund could not be retrieved. Please try again."
+        );
+      } else {
+        setRecords(demoStore.getTabung());
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [language]);
+
   useEffect(() => {
-    const load = async () => {
-      try { setRecords(isDemoMode ? demoStore.getTabung() : (await apiGet<TabungRecord[]>("tabung/list")).data || []); }
-      catch { setRecords(demoStore.getTabung()); }
-    };
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
-  }, []);
+  }, [load]);
 
   const summary = useMemo(() => {
     const now = new Date();
@@ -205,6 +230,25 @@ export function TabungDashboard({ compact = false }: { compact?: boolean }) {
   const progress = Math.min(100, target ? (summary.thisWeek / target) * 100 : 0);
 
   return <div className={compact ? "tabung-dashboard tabung-dashboard--compact" : "tabung-dashboard"}>
+    {loading ? (
+      <p className="muted" style={{ textAlign: "center", padding: "48px 24px" }}>
+        {language === "bm" ? "Memuatkan maklumat tabung..." : "Loading fund information..."}
+      </p>
+    ) : error ? (
+      <div style={{ textAlign: "center", padding: "48px 24px", display: "flex", flexDirection: "column", gap: "16px", alignItems: "center", width: "100%" }}>
+        <div className="form-message form-message--error" style={{ width: "100%", maxWidth: "500px", margin: "0 auto" }}>
+          {error}
+        </div>
+        <button
+          className="button button--outline button--small"
+          onClick={() => { void load(); }}
+          style={{ marginTop: "8px" }}
+        >
+          {language === "bm" ? "Cuba Semula" : "Retry"}
+        </button>
+      </div>
+    ) : (
+      <>
     <div className="transparency-grid">
       <article className="fund-card fund-card--featured">
         <span>
@@ -473,5 +517,6 @@ export function TabungDashboard({ compact = false }: { compact?: boolean }) {
       </section>
       <section className="records-card"><div className="section-title"><div><span className="eyebrow">{labels.distributions}</span><h2>{labels.recentDistributions}</h2></div></div><div className="record-list">{summary.distributions.length ? summary.distributions.slice(0, 8).map((record) => <article key={record.record_id}><div><strong>{record.description}</strong><span>{formatDate(record.date, language === "bm" ? "ms-MY" : "en-GB")}{record.recipient ? ` · ${record.recipient}` : ""}</span></div><b>− {money(record.amount)}</b></article>) : <p className="muted">{labels.noResults}</p>}</div></section>
     </div>}
+    </>)}
   </div>;
 }

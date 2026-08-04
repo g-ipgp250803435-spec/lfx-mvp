@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Icon } from "@/components/Icon";
 import { useApp } from "@/components/Providers";
 import { apiGet, isDemoMode } from "@/lib/api";
@@ -14,19 +14,40 @@ export function AnnouncementList({ compact = false }: { compact?: boolean }) {
   const [items, setItems] = useState<Announcement[]>([]);
   const [category, setCategory] = useState("ALL");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { language, labels } = useApp();
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        // Appending timestamp to bypass browser cache and fetch latest announcements/posters instantly
-        setItems(isDemoMode ? demoStore.getAnnouncements() : (await apiGet<Announcement[]>("announcements/list", { t: Date.now().toString() })).data || []);
-      } catch {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (isDemoMode) {
+        setItems(demoStore.getAnnouncements());
+      } else {
+        const res = await apiGet<Announcement[]>("announcements/list", { t: Date.now().toString() });
+        setItems(res.data || []);
+      }
+    } catch (err) {
+      console.error("[Diagnostics Error] failed to load announcements:", err);
+      if (!isDemoMode) {
+        setError(
+          language === "bm"
+            ? "Maklumat pengumuman tidak dapat diperoleh. Sila cuba lagi."
+            : "Announcement information could not be retrieved. Please try again."
+        );
+      } else {
         setItems(demoStore.getAnnouncements());
       }
-    };
+    } finally {
+      setLoading(false);
+    }
+  }, [language]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
-  }, []);
+  }, [load]);
 
   const categories = ["ALL", ...Array.from(new Set(items.map((item) => item.category)))];
 
@@ -190,22 +211,39 @@ export function AnnouncementList({ compact = false }: { compact?: boolean }) {
         }
       `}</style>
 
-      {!compact && (
-        <div className="filter-chips">
-          {categories.map((item) => (
-            <button
-              key={item}
-              className={category === item ? "active" : ""}
-              onClick={() => setCategory(item)}
-            >
-              {item === "ALL" ? (language === "bm" ? "Semua" : "All") : item}
-            </button>
-          ))}
+      {loading ? (
+        <div className="empty-state">{labels.loading}</div>
+      ) : error ? (
+        <div style={{ textAlign: "center", padding: "24px", display: "flex", flexDirection: "column", gap: "16px", alignItems: "center" }}>
+          <div className="form-message form-message--error" style={{ width: "100%", maxWidth: "500px", margin: "0 auto" }}>
+            {error}
+          </div>
+          <button
+            className="button button--outline button--small"
+            onClick={() => { void load(); }}
+            style={{ marginTop: "8px" }}
+          >
+            {language === "bm" ? "Cuba Semula" : "Retry"}
+          </button>
         </div>
-      )}
+      ) : (
+        <>
+          {!compact && (
+            <div className="filter-chips">
+              {categories.map((item) => (
+                <button
+                  key={item}
+                  className={category === item ? "active" : ""}
+                  onClick={() => setCategory(item)}
+                >
+                  {item === "ALL" ? (language === "bm" ? "Semua" : "All") : item}
+                </button>
+              ))}
+            </div>
+          )}
 
-      <div className="announcement-list">
-        {visible.length ? (
+          <div className="announcement-list">
+            {visible.length ? (
           visible.map((item) => {
             const announcementMedia =
               item.image_url ||
@@ -276,6 +314,8 @@ export function AnnouncementList({ compact = false }: { compact?: boolean }) {
           <div className="empty-state">{labels.noResults}</div>
         )}
       </div>
+        </>
+      )}
 
       {/* Enlarged image zoom modal overlay */}
       {selectedImage && (
