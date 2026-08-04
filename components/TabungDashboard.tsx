@@ -194,7 +194,7 @@ export function TabungDashboard({ compact = false }: { compact?: boolean }) {
 
             <div style={{ border: "1px solid var(--line)", borderRadius: "8px", padding: "15px", background: "var(--background-elevated)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                <span className="muted">{language === "bm" ? "Penerima" : "Recipient"}</span>
+                <span className="muted">{language === "bm" ? "Penerima " : "Recipient"}</span>
                 <strong>{content.donation.accountName}</strong>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
@@ -216,8 +216,8 @@ export function TabungDashboard({ compact = false }: { compact?: boolean }) {
             ) : (
               <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", textAlign: "center", margin: 0 }}>
                 {language === "bm"
-                  ? "* Sila lakukan pemindahan bank/QR sebanyak amaun di atas. Pihak pentadbir akan menyemak dan merekodkan sumbangan anda."
-                  : "* Please complete the bank/QR transfer of the exact amount above. The administrator will verify and record your donation."}
+                  ? "* Pihak pentadbir akan menyemak dan merekodkan sumbangan anda."
+                  : "* The administrator will verify and record your donation."}
               </p>
             )}
 
